@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Place Points</title>
+<link rel="stylesheet" type="text/css" href="../userdocs.css" />
+</head>
+<body>
+
+<h3>Place Points</h3>
+
+<p>
+<b>Place Points</b> is a thin helper around ChimeraX's built-in marker tools for
+the first step of geometric particle picking (the equivalent of the old Volume
+Tracer plugin). Use it to mark the centres of spherical features or the axes of
+tubes/filaments in a tomogram, then hand the markers to the
+<a href="pickparticle.html">Geometry Picker</a>.
+</p>
+
+<h3>Suggested workflow</h3>
+<ol>
+<li>Open a tomogram and show a slice (Volume Viewer / plane display).</li>
+<li>Click <b>New marker set</b> (one set per tube/filament; spheres can share a
+set).</li>
+<li>Choose a placement mode, then <b>right-click</b> in the view to add markers:
+<ul>
+<li><b>Mark on plane</b> &ndash; drop a marker on the displayed volume plane.</li>
+<li><b>Mark on surface</b> &ndash; drop a marker on a surface/density.</li>
+<li><b>Mark free point</b> &ndash; drop a marker at the front clip plane.</li>
+</ul></li>
+<li>Optionally <b>Save .cmm…</b> for reuse, then open the Geometry Picker.</li>
+</ol>
+
+<p>
+<b>Marker radius</b> sets the display size of new markers. All marker placement,
+editing and linking use ChimeraX's native Markers tools, so anything you can do
+there (move, delete, link) works on these marker sets too.
+</p>
+
+</body>
+</html>

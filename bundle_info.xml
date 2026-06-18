@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!--
+ChimeraX bundle metadata for Geopickr.
+
+Ports the Briggs-lab subtomogram picking pipeline (Volume Tracer -> Pick
+Particle -> Place Object) into a single ChimeraX bundle:
+  * Place Points    - thin helper over ChimeraX's native marker placement
+  * Geometry Picker - geometric particle picking on spheres/tubes/filaments/surfaces
+  * Place Object    - display TOM/AV3 ".em" motive lists as placed objects
+-->
+<BundleInfo name="ChimeraX-Geopickr"
+            version="1.0.0"
+            package="chimerax.geopickr"
+            minSessionVersion="1" maxSessionVersion="1"
+            customInit="false"
+            purePython="true">
+
+  <Author>Benjamin Barad (ChimeraX port/fork); original Chimera plugins by Kun Qu, Briggs lab</Author>
+  <Email>benjamin.barad@gmail.com</Email>
+  <URL>https://github.com/baradlab/Geopickr</URL>
+
+  <Synopsis>Geometric particle picking and display for subtomogram averaging</Synopsis>
+  <Description>Geopickr brings the Briggs-lab subtomogram-averaging
+picking workflow into one ChimeraX bundle. Place markers on a tomogram (using
+ChimeraX's native marker tools), geometrically sample evenly-spaced particle
+positions and orientations on spheres, tubes, filaments or arbitrary surface
+meshes, then display the resulting TOM/AV3 ".em" motive list as placed objects.
+Motive lists can be exported as EM (.em) or STOPGAP (.star) files.
+
+ChimeraX port of the UCSF Chimera plugins described in Qu K. et al. (2018) PNAS
+115:E11751-E11760 and Qu K. et al. (2021) Science 373:700-704.</Description>
+
+  <Categories>
+    <Category name="Volume Data"/>
+  </Categories>
+
+  <Dependencies>
+    <Dependency name="ChimeraX-Core" version="~=1.0"/>
+    <Dependency name="ChimeraX-UI" version="~=1.0"/>
+    <Dependency name="ChimeraX-Geometry" version="~=1.0"/>
+    <Dependency name="ChimeraX-Surface" version="~=1.0"/>
+    <Dependency name="ChimeraX-STL" version="~=1.0"/>
+    <Dependency name="ChimeraX-Markers" version="~=1.0"/>
+    <Dependency name="ChimeraX-Shape" version="~=1.0"/>
+    <Dependency name="numpy"/>
+  </Dependencies>
+
+  <DataFiles>
+    <DataFile>objects/*.stl</DataFile>
+    <DataFile>icons/*.png</DataFile>
+    <DataFile>docs/user/tools/*.html</DataFile>
+    <DataFile>docs/user/tools/*.png</DataFile>
+  </DataFiles>
+
+  <Classifiers>
+    <PythonClassifier>Development Status :: 4 - Beta</PythonClassifier>
+    <PythonClassifier>License :: OSI Approved :: GNU General Public License v3 (GPLv3)</PythonClassifier>
+    <ChimeraXClassifier>ChimeraX :: Tool :: Geopickr :: Volume Data :: Place markers, geometrically pick particles, and display them (tabbed)</ChimeraXClassifier>
+    <ChimeraXClassifier>ChimeraX :: Command :: placeobject :: Volume Data :: Place geometric objects at subtomogram positions from a motive list</ChimeraXClassifier>
+    <ChimeraXClassifier>ChimeraX :: Command :: pickparticle :: Volume Data :: Geometrically pick particles from markers</ChimeraXClassifier>
+  </Classifiers>
+
+</BundleInfo>

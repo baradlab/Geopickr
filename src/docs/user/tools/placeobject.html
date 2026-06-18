@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Place Object</title>
+<link rel="stylesheet" type="text/css" href="../userdocs.css" />
+</head>
+<body>
+
+<a name="top"></a>
+<h3><img src="placeobject-icon.png" height="48" align="absbottom"> Place Object</h3>
+
+<p>
+<b>Place Object</b> visualises the spatial distribution of subtomograms within
+a tomogram. A geometric object (or a custom surface) is translated and rotated
+according to the position and orientation stored for each particle in a
+<b>TOM/AV3 motive list</b>, and displayed in the same coordinate space as the
+tomogram. This is a ChimeraX port of the UCSF Chimera plugin described in
+Qu&nbsp;K. <i>et&nbsp;al.</i> (2018) <i>PNAS</i> 115:E11751&ndash;E11760.
+</p>
+
+<p>
+Start the tool from <b>Tools&nbsp;&rarr;&nbsp;Volume Data&nbsp;&rarr;&nbsp;Place
+Object</b>, or with the command described below. Each motive list is shown as a
+single ChimeraX surface model whose particles are drawn as instances, so even
+lists with many thousands of particles display efficiently.
+</p>
+
+<h3>Motive lists</h3>
+<p>
+Click <b>Open motive list...</b> to read a <code>.em</code> file. The list at
+the top shows every loaded motive list; selecting one shows its controls below.
+<b>Close</b> removes the selected model.
+</p>
+<p>
+A motive list is a (20,&nbsp;<i>N</i>) matrix following the TOM/AV3 convention.
+The rows used by Place Object are:
+</p>
+<table border="1" cellspacing="0" cellpadding="4">
+<tr><th>Row</th><th>Meaning</th></tr>
+<tr><td>1</td><td>Cross-correlation coefficient (CCC)</td></tr>
+<tr><td>8&ndash;10</td><td>X/Y/Z coordinate in the full tomogram</td></tr>
+<tr><td>11&ndash;13</td><td>X/Y/Z shift within the subvolume</td></tr>
+<tr><td>17&ndash;19</td><td>Phi / Psi / Theta Euler angles (ZXZ, degrees)</td></tr>
+<tr><td>20</td><td>Class number</td></tr>
+</table>
+
+<h3>Object</h3>
+<ul>
+<li><b>Shape</b> &ndash; a built-in shape (Sphere, ArrowX/Y/Z, Rectangle,
+Triangle, Square, Pentagon, Hexagon) or <b>Custom STL...</b> to browse for your
+own surface. A custom object can be exported from a density map with
+<b>Save&nbsp;&rarr;&nbsp;STL</b> after centering and orienting it.</li>
+<li><b>Voxel size</b> &ndash; scales the object to match the pixel size of the
+coordinates.</li>
+<li><b>Z offset</b> &ndash; shifts each object along its own (rotated) Z axis.</li>
+<li><b>Phi offset</b> &ndash; adds a rotation about Z before placement.</li>
+</ul>
+
+<h3>Colour</h3>
+<ul>
+<li><b>By class</b> &ndash; colour particles by the class value in the chosen
+<b>Class row</b> (default row 20), cycling through a fixed palette.</li>
+<li><b>By cross-correlation</b> &ndash; colour on a ramp between two colours
+across the chosen CC range. <b>Auto</b> resets the range to the data min/max.</li>
+<li><b>Solid</b> &ndash; a single colour for all particles.</li>
+</ul>
+
+<h3>Show</h3>
+<ul>
+<li><b>All</b> / <b>None</b> &ndash; show or hide every particle.</li>
+<li><b>Single</b> &ndash; show one particle, chosen by index.</li>
+<li><b>CC range</b> &ndash; show particles whose CCC falls between the two
+thresholds.</li>
+<li><b>Class</b> &ndash; show only the chosen class.</li>
+</ul>
+
+<h3>Actions</h3>
+<ul>
+<li><b>Focus</b> &ndash; frame the view on the displayed objects.</li>
+<li><b>Save shown...</b> &ndash; write the currently displayed particles to a new
+<code>.em</code> motive list.</li>
+</ul>
+
+<h3>Command</h3>
+<p>
+<b>placeobject</b> &nbsp;<i>file</i>&nbsp;
+[<b>shape</b>&nbsp;<i>shape-name</i>]
+[<b>voxelSize</b>&nbsp;<i>s</i>]
+[<b>zOffset</b>&nbsp;<i>z</i>]
+[<b>phiOffset</b>&nbsp;<i>deg</i>]
+</p>
+<p>
+Opens the motive list <i>file</i>, places the chosen object at every particle,
+and opens the Place Object tool. Example:
+</p>
+<blockquote><code>placeobject ~/data/particles.em shape ArrowZ voxelSize 4.4</code></blockquote>
+
+</body>
+</html>
