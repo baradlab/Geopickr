@@ -33,6 +33,7 @@ class GeometryPickerPanel:
         self.tool_window = tool.tool_window     # shared, used as dialog parent
         self._preview_models = []
         self._last_motl = None
+        self._last_model = None
         self._last_name = "picked"
 
         self.widget = QWidget()
@@ -171,7 +172,7 @@ class GeometryPickerPanel:
         row = QHBoxLayout()
         b_pick = QPushButton("Pick")
         b_pick.clicked.connect(self._pick)
-        b_save = QPushButton("Save...")
+        b_save = QPushButton("Export...")
         b_save.clicked.connect(self._save)
         row.addWidget(b_pick)
         row.addWidget(b_save)
@@ -508,26 +509,19 @@ class GeometryPickerPanel:
         model.voxel_size = 0.1
         model.update_placements()
         self.session.models.add([model])
+        self._last_model = model
         self.status.setText("Picked %d particles (%s). See the Place Object tab."
                             % (model.num_particles, style))
         self.tool.show_place_object(model)
 
     def _save(self):
-        if self._last_motl is None:
-            self.status.setText("Pick particles before saving.")
+        if self._last_model is None or self._last_model.deleted:
+            self.status.setText("Pick particles before exporting.")
             return
-        path, filt = QFileDialog.getSaveFileName(
-            self.tool_window.ui_area, "Save motive list",
-            self._last_name.split(" ")[0] + ".em",
-            "EM motive list (*.em);;STOPGAP star (*.star)")
-        if not path:
-            return
-        if path.endswith(".star") or "star" in filt.lower():
-            ml.write_stopgap_star(path, self._last_motl)
-        else:
-            ml.write_em_motivelist(path, self._last_motl)
-        self.status.setText("Saved %d particles to %s"
-                            % (self._last_motl.shape[1], os.path.basename(path)))
+        from . import export
+        result = export.run_export_dialog(self.tool, self._last_model)
+        if result is not None:
+            self.status.setText(result[1])
 
     # ------------------------------------------------------------ utilities
     def _combine(self):

@@ -83,5 +83,37 @@ between pixel sizes.</li>
 <blockquote><code>open spheres.cmm<br>
 pickparticle #2 style sphere radius 50 tangential 10</code></blockquote>
 
+<h3>Exporting particles</h3>
+<p>
+The <b>Export…</b> button (in the Geometry Picker and Place Object tabs) writes the
+particle list to several subtomogram-averaging formats:
+</p>
+<ul>
+<li><b>EM motive list</b> (TOM/AV3 <code>.em</code>) and <b>STOPGAP</b> <code>.star</code>.</li>
+<li><b>Dynamo</b> <code>.tbl</code> (35-column table), with an optional Dynamo volume list
+(<code>.vll</code>) to append a <code>&gt; table.tbl</code> reference for geometry-assisted
+cropping/STA.</li>
+<li><b>RELION 5.1</b> particles star (centered-&Aring;ngstr&ouml;m coordinates, orientation in
+<code>rlnTomoSubtomogram*</code>) and <b>RELION 3/4</b> tomo star (pixel coordinates,
+<code>rlnAngleRot/Tilt/Psi</code>).</li>
+</ul>
+<p>
+Dynamo and RELION need voxel/&Aring; coordinates, while Geopickr particles are in ChimeraX
+scene units &mdash; choose the source <b>Tomogram</b> (a Volume) in the dialog so voxel size,
+box dimensions and origin are read from the map and coordinates are converted correctly.
+Without a Volume, coordinates are assumed to already be voxels.
+</p>
+<p><i>Note: the Dynamo/RELION conventions are a beta feature &mdash; validate against a real
+import and report issues with an example file.</i></p>
+
+<h3>Command (export)</h3>
+<p>
+<b>geopickr export</b> <i>model</i> <b>file</b> <i>path</i>
+[<b>format</b> em|stopgap|dynamoTbl|relion5|relion3]
+[<b>onTomogram</b> <i>volume</i>] [<b>tomoId</b> <i>n</i>] [<b>tomoName</b> <i>name</i>]
+[<b>vll</b> <i>path</i>]
+</p>
+<blockquote><code>geopickr export #3 file particles.tbl format dynamoTbl onTomogram #1 vll tomograms.vll</code></blockquote>
+
 </body>
 </html>

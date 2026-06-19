@@ -324,3 +324,284 @@ def write_stopgap_star(path, motl):
                    else "%.6f" % float(cols[name][j])
                    for name in _STOPGAP_COLUMNS]
             f.write("\t".join(row) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# Dynamo / RELION Euler-angle conversions
+#
+# Geopickr stores each orientation as ZXZ (phi, psi, theta) with the active
+# matrix R = Rz(psi) Rx(theta) Rz(phi) (object +Z -> particle axis/normal).
+# We convert by extracting Euler angles from R, which preserves the full
+# orientation (including in-plane phi/twist) that Place Object displays.
+#
+# Ported from the validated reference scripts in dynamoForMatlab/
+# (surface_to_dynamo_table.py, surface_to_relion_star.py).
+# ---------------------------------------------------------------------------
+def tom_rotation_matrices(motl):
+    """(N,3,3) stack of rotation matrices for the particles in ``motl``."""
+    return rotation_matrices_zxz(motl[ROWS_ANGLES, :])
+
+
+def dynamo_matrix2euler(R):
+    """Extract Dynamo ZXZ Euler angles (tdrot, tilt, narot) in degrees.
+
+    Accepts a single (3,3) matrix or an (N,3,3) stack; returns (3,) or (N,3).
+    Direct translation of dynamo_matrix2euler.m.
+    """
+    R = np.asarray(R, dtype=np.float64)
+    single = (R.ndim == 2)
+    if single:
+        R = R[None, :, :]
+    n = R.shape[0]
+    r33 = np.clip(R[:, 2, 2], -1.0, 1.0)
+    tdrot = np.zeros(n)
+    tilt = np.zeros(n)
+    narot = np.zeros(n)
+    tol = 1e-9                            # only true gimbal poles use the branch
+    m1 = np.abs(r33 - 1) < tol            # tilt ~ 0
+    m2 = np.abs(r33 + 1) < tol            # tilt ~ 180
+    mg = ~m1 & ~m2
+    narot[m1] = np.degrees(np.arctan2(R[m1, 1, 0], R[m1, 0, 0]))
+    tilt[m2] = 180.0
+    narot[m2] = np.degrees(np.arctan2(R[m2, 1, 0], R[m2, 0, 0]))
+    tdrot[mg] = np.degrees(np.arctan2(R[mg, 2, 0], R[mg, 2, 1]))
+    tilt[mg] = np.degrees(np.arccos(r33[mg]))
+    narot[mg] = np.degrees(np.arctan2(R[mg, 0, 2], -R[mg, 1, 2]))
+    out = np.column_stack([tdrot, tilt, narot])
+    return out[0] if single else out
+
+
+def dynamo_euler2matrix(tdrot, tilt, narot):
+    """Inverse of :func:`dynamo_matrix2euler`: R = Rz(narot) Rx(tilt) Rz(tdrot)."""
+    return (rotation_matrix_z(narot) @ rotation_matrix_x(tilt)
+            @ rotation_matrix_z(tdrot))
+
+
+def tom_to_dynamo_eulers(motl):
+    """Return (N,3) Dynamo table Euler angles [tdrot, tilt, narot] in degrees.
+
+    Matches ArtiaX's DynamoEulerRotation: Dynamo stores the *object* orientation
+    directly (no inversion), so the table angles are dynamo_matrix2euler(R) of
+    the particle rotation R = Rz(psi)Rx(theta)Rz(phi).
+    """
+    return dynamo_matrix2euler(tom_rotation_matrices(motl))
+
+
+def relion_eulers_from_matrix(R):
+    """Extract RELION (rot, tilt, psi) degrees from object-orientation matrix R.
+
+    Vectorised port of ArtiaX's RELIONEulerRotation (ZYZ, invert_dir=True), so
+    that RELION's stored angles describe the inverse of the particle's object
+    orientation, matching how RELION/Warp interpret rlnAngleRot/Tilt/Psi.
+    Accepts (3,3) or (N,3,3); returns (3,) or (N,3).
+    """
+    R = np.asarray(R, dtype=np.float64)
+    single = (R.ndim == 2)
+    if single:
+        R = R[None, :, :]
+    eps = 1e-6
+    m02, m12, m22 = R[:, 0, 2], R[:, 1, 2], R[:, 2, 2]
+    m20, m21 = R[:, 2, 0], R[:, 2, 1]
+    m00, m10 = R[:, 0, 0], R[:, 1, 0]
+    abs_sb = np.sqrt(m02 * m02 + m12 * m12)
+    nd = abs_sb > eps                      # non-degenerate (tilt not 0/180)
+
+    rot = np.zeros(R.shape[0])
+    tilt = np.zeros(R.shape[0])
+    psi = np.zeros(R.shape[0])
+
+    # sign of sin(tilt), following ArtiaX._sign_rot2
+    rot3 = np.arctan2(m12, -m02)
+    s3 = np.sin(rot3)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sign_small = np.sign(-m02 / np.cos(rot3))
+    sign_sb = np.where(np.abs(s3) < eps, sign_small,
+                       np.where(s3 > 0, np.sign(m12), -np.sign(m12)))
+
+    rot[nd] = np.arctan2(m21[nd], m20[nd])
+    tilt[nd] = np.arctan2(sign_sb[nd] * abs_sb[nd], m22[nd])
+    psi[nd] = np.arctan2(m12[nd], -m02[nd])
+    # degenerate: tilt 0 or 180, fold spin into psi
+    dpos = (~nd) & (m22 >= 0)
+    dneg = (~nd) & (m22 < 0)
+    tilt[dneg] = np.pi
+    psi[dpos] = np.arctan2(-m10[dpos], m00[dpos])
+    psi[dneg] = np.arctan2(m10[dneg], -m00[dneg])
+
+    out = np.degrees(np.column_stack([rot, tilt, psi]))
+    return out[0] if single else out
+
+
+def tom_to_relion_eulers(motl):
+    """Return (N,3) RELION ZYZ Euler angles [rot, tilt, psi] in degrees."""
+    return relion_eulers_from_matrix(tom_rotation_matrices(motl))
+
+
+# ---------------------------------------------------------------------------
+# Dynamo .tbl writer (35-column format, ported from write_dynamo_table)
+# ---------------------------------------------------------------------------
+# 1-indexed integer columns that must be written as integers:
+_DYNAMO_INT_COLS = {0, 1, 2, 11, 12, 19, 20, 21, 30, 31, 33, 34}
+
+
+def write_dynamo_tbl(path, motl, pos_vox1, shifts_vox, tomo_id=1):
+    """Write a Dynamo particle table (.tbl).
+
+    ``pos_vox1`` : (N,3) 1-indexed integer voxel positions (cols 24-26).
+    ``shifts_vox``: (N,3) sub-voxel shifts (cols 4-6).
+    ``tomo_id``  : tomogram index for col 20 (matches the .vll line number).
+    """
+    n = motl.shape[1]
+    eul = tom_to_dynamo_eulers(motl)
+    table = np.zeros((n, 35))
+    tag = np.arange(1, n + 1, dtype=float)
+    table[:, 0] = tag                       # col 1:  particle tag
+    table[:, 3:6] = shifts_vox              # col 4-6: dx dy dz
+    table[:, 6:9] = eul                     # col 7-9: tdrot tilt narot
+    table[:, 9] = motl[ROW_CCC, :]          # col 10: cc
+    table[:, 12] = 1.0                      # col 13: Fourier sampling
+    table[:, 13] = -60.0                    # col 14: tilt min
+    table[:, 14] = 60.0                     # col 15: tilt max
+    table[:, 19] = float(tomo_id)           # col 20: tomogram
+    table[:, 20] = tag                      # col 21: region (= tag)
+    table[:, 21] = 1.0                      # col 22
+    table[:, 23:26] = pos_vox1             # col 24-26: x y z
+    table[:, 34] = 1.0                      # col 35
+    lines = []
+    for row in table:
+        parts = [str(int(round(v))) if j in _DYNAMO_INT_COLS else "%g" % v
+                 for j, v in enumerate(row)]
+        lines.append(" ".join(parts))
+    with open(path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# RELION star writers
+# ---------------------------------------------------------------------------
+def write_relion5_star(path, motl, centered_A, tomo_name="tomo",
+                       manifold=None, subset=None):
+    """Write a RELION 5.1 particles STAR file (centered Angstrom coordinates).
+
+    Orientation goes in rlnTomoSubtomogram{Rot,Tilt,Psi}; rlnAngle* start at 0.
+    """
+    n = motl.shape[1]
+    eul = tom_to_relion_eulers(motl)
+    if manifold is None:
+        manifold = motl[1, :].astype(int)
+    if subset is None:
+        subset = (np.arange(n) % 2) + 1
+    header = (
+        "# Generated by Geopickr\n\ndata_particles\n\nloop_\n"
+        "_rlnTomoName #1\n_rlnTomoParticleName #2\n_rlnRandomSubset #3\n"
+        "_rlnCenteredCoordinateXAngst #4\n_rlnCenteredCoordinateYAngst #5\n"
+        "_rlnCenteredCoordinateZAngst #6\n_rlnOriginXAngst #7\n"
+        "_rlnOriginYAngst #8\n_rlnOriginZAngst #9\n_rlnAngleRot #10\n"
+        "_rlnAngleTilt #11\n_rlnAnglePsi #12\n_rlnTomoSubtomogramRot #13\n"
+        "_rlnTomoSubtomogramTilt #14\n_rlnTomoSubtomogramPsi #15\n"
+        "_rlnTomoManifoldIndex #16\n"
+    )
+    lines = []
+    for i in range(n):
+        x, y, z = centered_A[i]
+        rot, tilt, psi = eul[i]
+        lines.append(
+            "%s  %s/%06d  %d  %g  %g  %g  0.0  0.0  0.0  0.0  0.0  0.0  "
+            "%g  %g  %g  %d"
+            % (tomo_name, tomo_name, i + 1, int(subset[i]), x, y, z,
+               rot, tilt, psi, int(manifold[i])))
+    with open(path, "w") as f:
+        f.write(header + "\n".join(lines) + "\n")
+
+
+def write_relion3_star(path, motl, pos_vox0, tomo_name="tomo"):
+    """Write a RELION 3/4-style tomo particles STAR file (pixel coordinates)."""
+    n = motl.shape[1]
+    eul = tom_to_relion_eulers(motl)
+    header = (
+        "# Generated by Geopickr\n\ndata_particles\n\nloop_\n"
+        "_rlnTomoName #1\n_rlnCoordinateX #2\n_rlnCoordinateY #3\n"
+        "_rlnCoordinateZ #4\n_rlnAngleRot #5\n_rlnAngleTilt #6\n_rlnAnglePsi #7\n"
+    )
+    lines = []
+    for i in range(n):
+        x, y, z = pos_vox0[i]
+        rot, tilt, psi = eul[i]
+        lines.append("%s  %g  %g  %g  %g  %g  %g"
+                     % (tomo_name, x, y, z, rot, tilt, psi))
+    with open(path, "w") as f:
+        f.write(header + "\n".join(lines) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# Dynamo .vll volume-list integration (ported from vll_to_dynamo_tables.py)
+# ---------------------------------------------------------------------------
+def _is_vll_tomo_line(line):
+    s = line.strip()
+    return bool(s) and not s.startswith(("#", "$", "*", ">"))
+
+
+def read_vll(path):
+    with open(path) as f:
+        return f.readlines()
+
+
+def vll_tomo_index(lines, tomo_substr):
+    """Return the 1-based index of the .vll tomogram line containing ``tomo_substr``.
+
+    Returns None if not found.
+    """
+    idx = 0
+    for line in lines:
+        if _is_vll_tomo_line(line):
+            idx += 1
+            if tomo_substr and tomo_substr in line:
+                return idx
+    return None
+
+
+def append_vll_table_ref(vll_path, tbl_path, tomo_substr=None, backup=True):
+    """Append a '> tbl_path' reference into a .vll after the matching tomogram block.
+
+    If ``tomo_substr`` is None or not found, the reference is appended to the
+    last tomogram block. Writes a .vll.bak backup first when ``backup`` is True.
+    Returns the 1-based tomogram index the reference was attached to (or None).
+    """
+    lines = read_vll(vll_path)
+    target = vll_tomo_index(lines, tomo_substr) if tomo_substr else None
+    if target is None:
+        # default: last tomogram block
+        total = sum(1 for l in lines if _is_vll_tomo_line(l))
+        target = total or None
+    if target is None:
+        return None
+
+    result = []
+    idx = 0
+    i = 0
+    ref = "> %s\n" % tbl_path
+    while i < len(lines):
+        line = lines[i]
+        if not _is_vll_tomo_line(line):
+            result.append(line)
+            i += 1
+            continue
+        idx += 1
+        block = [line]
+        i += 1
+        while i < len(lines) and not _is_vll_tomo_line(lines[i]):
+            block.append(lines[i])
+            i += 1
+        result.extend(block)
+        if idx == target:
+            existing = {l.strip()[1:].strip() for l in block
+                        if l.strip().startswith(">")}
+            if str(tbl_path) not in existing:
+                result.append(ref)
+
+    if backup:
+        import shutil
+        shutil.copy2(vll_path, str(vll_path) + ".bak")
+    with open(vll_path, "w") as f:
+        f.writelines(result)
+    return target

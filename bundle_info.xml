@@ -9,7 +9,7 @@ Particle -> Place Object) into a single ChimeraX bundle:
   * Place Object    - display TOM/AV3 ".em" motive lists as placed objects
 -->
 <BundleInfo name="ChimeraX-Geopickr"
-            version="1.0.0"
+            version="1.1.0b1"
             package="chimerax.geopickr"
             minSessionVersion="1" maxSessionVersion="1"
             customInit="false"
@@ -58,6 +58,7 @@ ChimeraX port of the UCSF Chimera plugins described in Qu K. et al. (2018) PNAS
     <ChimeraXClassifier>ChimeraX :: Tool :: Geopickr :: Volume Data :: Place markers, geometrically pick particles, and display them (tabbed)</ChimeraXClassifier>
     <ChimeraXClassifier>ChimeraX :: Command :: placeobject :: Volume Data :: Place geometric objects at subtomogram positions from a motive list</ChimeraXClassifier>
     <ChimeraXClassifier>ChimeraX :: Command :: pickparticle :: Volume Data :: Geometrically pick particles from markers</ChimeraXClassifier>
+    <ChimeraXClassifier>ChimeraX :: Command :: geopickr export :: Volume Data :: Export a particle model to Dynamo/RELION/EM formats</ChimeraXClassifier>
   </Classifiers>
 
 </BundleInfo>

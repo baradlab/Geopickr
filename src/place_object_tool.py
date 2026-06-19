@@ -220,7 +220,7 @@ class PlaceObjectPanel:
         row = QHBoxLayout()
         focus_btn = QPushButton("Focus")
         focus_btn.clicked.connect(self._focus)
-        save_btn = QPushButton("Save shown...")
+        save_btn = QPushButton("Export shown...")
         save_btn.clicked.connect(self._save_shown)
         row.addWidget(focus_btn)
         row.addWidget(save_btn)
@@ -522,20 +522,17 @@ class PlaceObjectPanel:
         m = self.current_model()
         if m is None:
             return
-        default = ""
-        if m.source_path:
-            default = m.source_path[:-3] + "_display.em" \
-                if m.source_path.endswith(".em") else m.source_path + "_display.em"
-        path, filt = QFileDialog.getSaveFileName(
-            self.tool_window.ui_area, "Save displayed particles",
-            default, "EM motive list (*.em);;STOPGAP star (*.star)")
-        if not path:
+        # Export only the currently displayed particles.
+        import numpy as np
+        idx = m.displayed_indices()
+        if len(idx) == 0:
+            self.status.setText("No particles are displayed to export.")
             return
-        fmt = "star" if (path.lower().endswith(".star")
-                         or "star" in filt.lower()) else "em"
-        n = m.save_displayed(path, fmt=fmt)
-        self.status.setText("Saved %d displayed particles to %s"
-                            % (n, os.path.basename(path)))
+        motl = np.ascontiguousarray(m.motl[:, idx])
+        from . import export
+        result = export.run_export_dialog(self.tool, m, motl=motl)
+        if result is not None:
+            self.status.setText(result[1])
 
     # ===================================================================
     # Lifecycle

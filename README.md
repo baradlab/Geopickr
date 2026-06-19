@@ -112,7 +112,29 @@ pipeline:
 | Markers (sphere centres / tube & filament axes) | Chimera marker XML (`.cmm`) | ✓ | ✓ (via the Markers tool) |
 | Surface meshes for surface picking | any surface ChimeraX can open (`.obj`, `.ply`, `.stl`, volume isosurfaces, …) | ✓ | — |
 | Motive list (particle positions/orientations) | TOM/AV3 EM (`.em`), 20×N matrix | ✓ | ✓ |
-| Stopgap Star export | STOPGAP (`.star`) | — | ✓ |
+| STOPGAP star | STOPGAP (`.star`) | — | ✓ |
+| **Dynamo table** | Dynamo (`.tbl`) + optional volume-list (`.vll`) hand-off | — | ✓ *(beta)* |
+| **RELION 5** | RELION 5.1 particles star (centered Å, `rlnTomoSubtomogram*`) | — | ✓ *(beta)* |
+| **RELION 3/4** | RELION 3/4 tomo star (pixel coords, `rlnAngleRot/Tilt/Psi`) | — | ✓ *(beta)* |
+
+Use **Export…** in the Place Object or Geometry Picker tab, or the command
+`geopickr export #model file <path> format <em|stopgap|dynamoTbl|relion5|relion3>
+[onTomogram #vol] [tomoId n] [tomoName name] [vll <path>]`.
+
+> **Coordinate units:** Dynamo `.tbl` needs voxel indices and RELION needs voxel/centered-Å
+> coordinates, but Geopickr's particles live in ChimeraX scene units. Choose the source
+> **tomogram Volume** in the Export dialog (or `onTomogram`) so coordinates are converted
+> correctly (voxel size, box dimensions, origin read from the map). Without a Volume the
+> coordinates are assumed to already be in voxels.
+
+> **Beta:** the Dynamo/RELION **angle conventions are cross-validated against
+> [ArtiaX](https://github.com/FrangakisLab/ArtiaX)** (Geopickr's exported Euler angles
+> reproduce the same particle orientation through ArtiaX's own `DynamoEulerRotation` /
+> `RELIONEulerRotation`). The **coordinate-origin conventions** (Dynamo 1-indexing, RELION 5
+> centering at box/2) follow ArtiaX/standard usage but have **not yet been confirmed against a
+> live Dynamo/RELION import** on real data. Please report mismatches (issues
+> [#1](https://github.com/baradlab/Geopickr/issues/1),
+> [#2](https://github.com/baradlab/Geopickr/issues/2)) with an example.
 
 The 20-row `.em` motive-list layout follows the TOM/AV3 convention (CCC, tomogram
 /feature indices, X/Y/Z coordinate + shift, ZXZ Euler angles, class); see the

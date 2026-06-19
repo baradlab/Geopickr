@@ -1,12 +1,16 @@
 # vim: set expandtab ts=4 sw=4:
-"""Command-line interfaces: ``placeobject`` and ``pickparticle``."""
+"""Command-line interfaces: ``placeobject``, ``pickparticle``, ``geopickr export``."""
 
 from chimerax.core.commands import (
-    CmdDesc, register, OpenFileNameArg, FloatArg, EnumOf, BoolArg, IntArg,
-    ModelsArg, ModelArg,
+    CmdDesc, register, OpenFileNameArg, SaveFileNameArg, FloatArg, EnumOf,
+    BoolArg, IntArg, StringArg, ModelsArg, ModelArg,
 )
 
 from . import shapes
+
+# command fmt name -> export.export_model fmt key
+_EXPORT_FMTS = {"em": "em", "stopgap": "stopgap", "dynamoTbl": "dynamo_tbl",
+                "relion5": "relion5", "relion3": "relion3"}
 
 
 # ---------------------------------------------------------------------------
@@ -111,8 +115,50 @@ _pickparticle_desc = CmdDesc(
 )
 
 
+# ---------------------------------------------------------------------------
+# geopickr export
+# ---------------------------------------------------------------------------
+def geopickr_export(session, model, file, format="dynamoTbl", onTomogram=None,
+                    tomoId=1, tomoName=None, vll=None, voxelSize=None):
+    """Export a placed-particle model to em / stopgap / Dynamo / RELION files."""
+    from chimerax.core.errors import UserError
+    from .objmodel import PlacedParticles
+    from . import export
+
+    if not isinstance(model, PlacedParticles):
+        raise UserError("model must be a Geopickr particle model (PlacedParticles).")
+    fmt = _EXPORT_FMTS.get(format)
+    if fmt is None:
+        raise UserError("Unknown format %r" % format)
+
+    count = export.export_model(
+        session, model, file, fmt, volume=onTomogram, tomo_id=tomoId,
+        tomo_name=tomoName, vll_path=vll, voxel_size=voxelSize)
+    import os
+    session.logger.info("Geopickr export: %d particles -> %s (%s)"
+                        % (count, os.path.basename(file), format))
+
+
+_geopickr_export_desc = CmdDesc(
+    required=[("model", ModelArg)],
+    keyword=[
+        ("file", SaveFileNameArg),
+        ("format", EnumOf(list(_EXPORT_FMTS))),
+        ("onTomogram", ModelArg),
+        ("tomoId", IntArg),
+        ("tomoName", StringArg),
+        ("vll", OpenFileNameArg),
+        ("voxelSize", FloatArg),
+    ],
+    required_arguments=["file"],
+    synopsis="Export a Geopickr particle model to Dynamo/RELION/EM formats",
+)
+
+
 def register_command(command_name, logger):
     if command_name == "placeobject":
         register(command_name, _placeobject_desc, placeobject, logger=logger)
     elif command_name == "pickparticle":
         register(command_name, _pickparticle_desc, pickparticle, logger=logger)
+    elif command_name == "geopickr export":
+        register(command_name, _geopickr_export_desc, geopickr_export, logger=logger)
