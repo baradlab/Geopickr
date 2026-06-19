@@ -293,10 +293,15 @@ class PlaceObjectPanel:
             return None
         self.session.models.add([model])
         self._refresh_list()
-        # select the newly added model
+        # Select the newly added model and refresh the controls. We call
+        # refresh() explicitly rather than relying on currentRowChanged, which
+        # does NOT fire when the row is unchanged (e.g. the first model added at
+        # row 0) -- otherwise the controls stay disabled until a second model
+        # shifts the selection.
         models = self._models()
         if model in models:
             self.list_widget.setCurrentRow(models.index(model))
+        self.refresh()
         self.status.setText(
             "Loaded %s with %d particles." % (name, model.num_particles))
         return model
