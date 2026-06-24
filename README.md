@@ -1,4 +1,4 @@
-# Geopickr
+# <img src="docs/geopickr_icon.png" alt="" height="30" valign="middle"> Geopickr
 
 *A ChimeraX bundle for geometric particle picking in cryo-electron tomography.*
 
