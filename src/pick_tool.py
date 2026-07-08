@@ -575,7 +575,7 @@ class GeometryPickerPanel:
 # Wireframe geometry for the live radius-fit preview
 # ---------------------------------------------------------------------------
 def _sphere_geometry(center, radius, nlat=14, nlon=22):
-    """UV-sphere (vertices, normals, triangles) centred at ``center``."""
+    """UV-sphere (vertices, normals, triangles) centerd at ``center``."""
     lats = np.linspace(0.0, np.pi, nlat + 1)
     lons = np.linspace(0.0, 2 * np.pi, nlon, endpoint=False)
     la, lo = np.meshgrid(lats, lons, indexing="ij")

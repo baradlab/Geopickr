@@ -79,7 +79,7 @@ class FloatSlider(QWidget):
 
 
 class ColorButton(QPushButton):
-    """A button that shows and edits an RGBA colour via a colour dialog."""
+    """A button that shows and edits an RGBA color via a color dialog."""
 
     colorChanged = Signal(tuple)
 
@@ -107,7 +107,7 @@ class ColorButton(QPushButton):
         from Qt.QtWidgets import QColorDialog
         r, g, b, a = self._rgba
         c = QColorDialog.getColor(
-            QColor(r, g, b, a), self, "Select colour",
+            QColor(r, g, b, a), self, "Select color",
             QColorDialog.ShowAlphaChannel)
         if c.isValid():
             self._rgba = (c.red(), c.green(), c.blue(), c.alpha())

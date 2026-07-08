@@ -29,7 +29,7 @@ these controls are on the <b>Geometry Picker</b> tab, alongside the
 <h3>Workflow</h3>
 <ol>
 <li>Place markers with <a href="placepoints.html">Place Points</a> (or open a
-<code>.cmm</code>): one marker per sphere centre, or an ordered set of markers
+<code>.cmm</code>): one marker per sphere center, or an ordered set of markers
 along a tube/filament axis.</li>
 <li>Select the marker set(s), choose an <b>Object style</b>, set the radius and
 sampling, and click <b>Pick</b>.</li>
@@ -37,12 +37,12 @@ sampling, and click <b>Pick</b>.</li>
 
 <h3>Object styles</h3>
 <ul>
-<li><b>Sphere</b> &ndash; each marker is a sphere centre; particles are sampled
+<li><b>Sphere</b> &ndash; each marker is a sphere center; particles are sampled
 over the sphere surface, oriented along the outward normal.</li>
 <li><b>Tube</b> &ndash; each marker set defines a tube axis (a natural cubic
 spline through &ge;2 markers); particles are sampled on the tube <i>surface</i>
 at the given radius, oriented along the surface normal.</li>
-<li><b>Filament</b> &ndash; particles are placed on the spline <i>centreline</i>
+<li><b>Filament</b> &ndash; particles are placed on the spline <i>centerline</i>
 with Z along the local tangent; an optional <b>Twist</b> adds a helical in-plane
 rotation per step.</li>
 <li><b>Surface</b> &ndash; particles are distributed over any open surface mesh

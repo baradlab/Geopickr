@@ -6,7 +6,7 @@ positions and orientations on:
 
   * sphere   - port of the original Pick Particle ``Sampling_sphere``
   * tube     - port of ``Sampling_tube`` (particles on the tube surface)
-  * filament - NEW: particles on the spline centreline, Z along the tangent
+  * filament - NEW: particles on the spline centerline, Z along the tangent
   * surface  - NEW: area-weighted, Poisson-thinned sampling of a mesh
 
 The sphere/tube ports reproduce the maths of K. Qu's Chimera plugin; filament
@@ -174,11 +174,11 @@ def sample_tube(axis_list, radius, t_spacing, a_spacing=0.0,
 
 
 # ---------------------------------------------------------------------------
-# Filament (particles on the spline centreline, Z along the tangent)
+# Filament (particles on the spline centerline, Z along the tangent)
 # ---------------------------------------------------------------------------
 def sample_filament(axis_list, a_spacing, twist_deg=0.0, random_phi=False,
                     tomo_id=0, set_ids=None):
-    """Sample particles along the centreline of one or more filaments."""
+    """Sample particles along the centerline of one or more filaments."""
     a = float(a_spacing)
     cols = []
     for nfl, axis in enumerate(axis_list):

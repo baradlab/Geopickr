@@ -3,7 +3,7 @@
 
 Rather than creating one Model per particle (as the original Chimera plugin
 did), a single :class:`chimerax.core.models.Surface` is used with one geometry
-copy positioned by a ``Places`` array.  Per-particle colour is set through the
+copy positioned by a ``Places`` array.  Per-particle color is set through the
 drawing's per-instance ``colors`` array and per-particle visibility through
 ``display_positions``.  This scales to tens of thousands of particles.
 """
@@ -14,7 +14,7 @@ from chimerax.core.models import Surface
 from . import motivelist as ml
 from . import shapes
 
-# Class colour palette (RGBA 0-255), ported from the original plugin's pastel
+# Class color palette (RGBA 0-255), ported from the original plugin's pastel
 # set; indexed by (class number mod 10).
 _CLASS_PALETTE = np.array([
     (179, 179, 179, 255), (255, 255, 179, 255), (179, 255, 255, 255),
@@ -55,9 +55,9 @@ class PlacedParticles(Surface):
         self.z_offset = 0.0
         self.phi_offset = 0.0
 
-        # Colour parameters
+        # Color parameters
         self.color_mode = "class"          # "class" | "cc" | "solid"
-        self.class_row = ml.ROW_CLASS + 1  # 1-based row used for class colour
+        self.class_row = ml.ROW_CLASS + 1  # 1-based row used for class color
         cc = self.motl[ml.ROW_CCC, :]
         self.cc_min = float(cc.min())
         self.cc_max = float(cc.max())
@@ -98,7 +98,7 @@ class PlacedParticles(Surface):
         return shapes.builtin_path(self.shape_name)
 
     def _build(self):
-        """(Re)load the object geometry and rebuild placements and colours."""
+        """(Re)load the object geometry and rebuild placements and colors."""
         path = self._shape_path()
         if not path:
             return
@@ -119,12 +119,12 @@ class PlacedParticles(Surface):
         pa = ml.placement_array(self.motl, self.voxel_size,
                                 self.z_offset, self.phi_offset)
         self.positions = Places(place_array=pa)
-        # Re-apply colours/visibility since the position count is unchanged but
+        # Re-apply colors/visibility since the position count is unchanged but
         # the Places object was replaced.
         self.update_colors()
         self.update_display()
 
-    # -- colours -------------------------------------------------------------
+    # -- colors -------------------------------------------------------------
     def compute_colors(self):
         n = self.num_particles
         if self.color_mode == "solid":
@@ -142,7 +142,7 @@ class PlacedParticles(Surface):
             c1 = np.array(self.upper_cc_color, dtype=np.float64)
             colors = (c0 * (1.0 - t)[:, None] + c1 * t[:, None])
             return np.clip(colors, 0, 255).astype(np.uint8)
-        # default: class colouring
+        # default: class coloring
         idx = np.mod(self.class_values().astype(np.int64), len(_CLASS_PALETTE))
         return _CLASS_PALETTE[idx]
 

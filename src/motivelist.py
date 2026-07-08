@@ -245,7 +245,7 @@ def combine_motls(motls, renumber=False):
     """Concatenate several (20, N) motive lists into one.
 
     The feature-index row (row 6) is offset cumulatively between files, matching
-    the original 'Combine Coordinates' behaviour.  If ``renumber`` is True the
+    the original 'Combine Coordinates' behavior.  If ``renumber`` is True the
     particle-number row (row 4) is renumbered sequentially.
     """
     combined = np.zeros((N_ROWS, 0), dtype=np.float64)

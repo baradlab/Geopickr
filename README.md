@@ -13,13 +13,13 @@ ChimeraX tool. It is a **fork and port** of three UCSF Chimera plugins written
 by **Kun Qu in the laboratory of John Briggs** (originally MRC LMB /
 Heidelberg, now Max Planck Institute of Biochemistry):
 
-1. **Place Points** — mark sphere centres / tube & filament axes on a tomogram
+1. **Place Points** — mark sphere centers / tube & filament axes on a tomogram
    (a thin helper over ChimeraX's native marker tools; replaces the Volume
    Tracer step).
 2. **Geometry Picker** — geometrically sample evenly-spaced particle positions
    and orientations on **spheres, tubes, filaments, or arbitrary surface
    meshes**, producing a 20×N TOM/AV3 motive list. (Ports *Pick Particle*.)
-3. **Place Object** — display a motive list as placed objects, coloured by class
+3. **Place Object** — display a motive list as placed objects, colored by class
    or cross-correlation. (Ports *Place Object*.)
 
 This bundle **ports these tools from UCSF Chimera to UCSF ChimeraX, integrates
@@ -56,7 +56,7 @@ are carried over from the original Place Object plugin.
 - **Chimera → ChimeraX** port (Qt UI instead of Tkinter; native ChimeraX
   models, sessions, and commands).
 - **Single tabbed tool** (ArtiaX-style) instead of three separate windows.
-- **New geometry modes**: *Filament* (centreline + tangent orientation +
+- **New geometry modes**: *Filament* (centerline + tangent orientation +
   optional helical twist) and *Surface* (area-weighted, Poisson-thinned sampling
   of any open OBJ/PLY/STL mesh). Sphere and Tube are faithful ports of Qu's maths.
 - **Live radius fitting** — a single whole-model radius slider by default, or
@@ -85,11 +85,11 @@ Then open it from **Tools → Volume Data → Geopickr** — one window with
 ## Quick start
 
 1. **Place Points** tab: *New marker set* → *Mark on plane* → right-click VLP
-   centres in the tomogram.
+   centers in the tomogram.
 2. **Geometry Picker** tab: select the marker set → *Sphere* → set the *Radius*
    slider and *Tangential* spacing → *Show fit* (optionally tick *Per-object
    radii*) → *Pick*.
-3. The particles appear in the **Place Object** tab; adjust shape/colour and
+3. The particles appear in the **Place Object** tab; adjust shape/color and
    *Save shown…* as `.em` or STOPGAP `.star`.
 
 Command equivalent:
@@ -109,7 +109,7 @@ pipeline:
 
 | Purpose | Format | Read | Write |
 |---|---|---|---|
-| Markers (sphere centres / tube & filament axes) | Chimera marker XML (`.cmm`) | ✓ | ✓ (via the Markers tool) |
+| Markers (sphere centers / tube & filament axes) | Chimera marker XML (`.cmm`) | ✓ | ✓ (via the Markers tool) |
 | Surface meshes for surface picking | any surface ChimeraX can open (`.obj`, `.ply`, `.stl`, volume isosurfaces, …) | ✓ | — |
 | Motive list (particle positions/orientations) | TOM/AV3 EM (`.em`), 20×N matrix | ✓ | ✓ |
 | STOPGAP star | STOPGAP (`.star`) | — | ✓ |

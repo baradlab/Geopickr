@@ -115,7 +115,7 @@ class PlaceObjectPanel:
         layout.addWidget(box)
 
     def _build_color_section(self, layout):
-        box = QGroupBox("Colour")
+        box = QGroupBox("Color")
         v = QVBoxLayout(box)
 
         self.color_group = QButtonGroup(box)
@@ -139,12 +139,12 @@ class PlaceObjectPanel:
         self.class_row_spin.setValue(20)
         self.class_row_spin.valueChanged.connect(self._class_row_changed)
         grid.addWidget(self.class_row_spin, 0, 1)
-        # Solid colour
-        grid.addWidget(QLabel("Solid colour"), 0, 2)
+        # Solid color
+        grid.addWidget(QLabel("Solid color"), 0, 2)
         self.solid_color_btn = ColorButton((128, 128, 128, 255))
         self.solid_color_btn.colorChanged.connect(self._color_changed)
         grid.addWidget(self.solid_color_btn, 0, 3)
-        # CC colour ramp
+        # CC color ramp
         grid.addWidget(QLabel("CC range"), 1, 0)
         cc_row = QHBoxLayout()
         self.cc_low_color = ColorButton((255, 0, 0, 255))
@@ -344,7 +344,7 @@ class PlaceObjectPanel:
             self.zoff_spin.setValue(m.z_offset)
             self.phi_spin.setValue(m.phi_offset)
 
-            # colour
+            # color
             {"class": self.rb_class, "cc": self.rb_cc,
              "solid": self.rb_solid}[m.color_mode].setChecked(True)
             self.class_row_spin.setValue(m.class_row)
