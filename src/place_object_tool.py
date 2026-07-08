@@ -73,12 +73,13 @@ class PlaceObjectPanel:
 
     def _build_object_section(self, layout):
         box = QGroupBox("Object")
-        form = QFormLayout(box)
+        grid = QGridLayout(box)
 
         self.shape_combo = QComboBox()
         self.shape_combo.addItems(list(shapes.BUILTIN_SHAPES) + [shapes.CUSTOM_SHAPE])
         self.shape_combo.currentTextChanged.connect(self._shape_changed)
-        form.addRow("Shape", self.shape_combo)
+        grid.addWidget(QLabel("Shape"), 0, 0)
+        grid.addWidget(self.shape_combo, 0, 1, 1, 3)
 
         crow = QHBoxLayout()
         self.custom_path_edit = QLineEdit()
@@ -90,19 +91,26 @@ class PlaceObjectPanel:
         self.custom_widget = QWidget()
         self.custom_widget.setLayout(crow)
         crow.setContentsMargins(0, 0, 0, 0)
-        form.addRow("STL file", self.custom_widget)
+        grid.addWidget(QLabel("STL file"), 1, 0)
+        grid.addWidget(self.custom_widget, 1, 1, 1, 3)
 
+        # Voxel size and Z offset share a row; Phi offset on the next.
         self.voxel_spin = self._dspin(0.0001, 100000.0, 4, 1.0)
         self.voxel_spin.valueChanged.connect(self._placement_changed)
-        form.addRow("Voxel size", self.voxel_spin)
+        grid.addWidget(QLabel("Voxel size"), 2, 0)
+        grid.addWidget(self.voxel_spin, 2, 1)
 
         self.zoff_spin = self._dspin(-100000.0, 100000.0, 3, 0.0)
         self.zoff_spin.valueChanged.connect(self._placement_changed)
-        form.addRow("Z offset", self.zoff_spin)
+        grid.addWidget(QLabel("Z offset"), 2, 2)
+        grid.addWidget(self.zoff_spin, 2, 3)
 
         self.phi_spin = self._dspin(-360.0, 360.0, 2, 0.0)
         self.phi_spin.valueChanged.connect(self._placement_changed)
-        form.addRow("Phi offset (°)", self.phi_spin)
+        grid.addWidget(QLabel("Phi offset (°)"), 3, 0)
+        grid.addWidget(self.phi_spin, 3, 1)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(3, 1)
 
         layout.addWidget(box)
 

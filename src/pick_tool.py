@@ -11,9 +11,10 @@ from chimerax.core.commands import run
 
 from Qt.QtCore import Qt
 from Qt.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGroupBox, QPushButton,
-    QLabel, QComboBox, QListWidget, QListWidgetItem, QRadioButton, QButtonGroup,
-    QDoubleSpinBox, QSpinBox, QCheckBox, QFileDialog, QLineEdit, QScrollArea,
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QGridLayout, QGroupBox,
+    QPushButton, QLabel, QComboBox, QListWidget, QListWidgetItem, QRadioButton,
+    QButtonGroup, QDoubleSpinBox, QSpinBox, QCheckBox, QFileDialog, QLineEdit,
+    QScrollArea,
 )
 
 from . import picking
@@ -152,20 +153,26 @@ class GeometryPickerPanel:
         self._fit_objects = []     # dicts: kind, center/axis/markerset, set_id, label, slider, model
 
     def _build_sampling(self, layout):
-        box = QGroupBox("Sampling")
-        form = QFormLayout(box)
+        box = QGroupBox("Sampling (voxels)")
+        grid = QGridLayout(box)
         self.tan_spin = self._dspin(0.0, 100000.0, 2, 10.0)
-        form.addRow("Tangential (voxels)", self.tan_spin)
+        grid.addWidget(QLabel("Tangential"), 0, 0)
+        grid.addWidget(self.tan_spin, 0, 1)
         self.ax_spin = self._dspin(0.0, 100000.0, 2, 0.0)
-        form.addRow("Axial (voxels)", self.ax_spin)
+        grid.addWidget(QLabel("Axial"), 0, 2)
+        grid.addWidget(self.ax_spin, 0, 3)
         self.twist_spin = self._dspin(-360.0, 360.0, 2, 0.0)
-        form.addRow("Twist (°/step)", self.twist_spin)
-        self.randphi_check = QCheckBox("Randomize phi")
-        self.randphi_check.setChecked(True)
-        form.addRow(self.randphi_check)
+        grid.addWidget(QLabel("Twist °/step"), 1, 0)
+        grid.addWidget(self.twist_spin, 1, 1)
         self.tomoid_spin = QSpinBox()
         self.tomoid_spin.setRange(0, 1000000)
-        form.addRow("Tomogram ID", self.tomoid_spin)
+        grid.addWidget(QLabel("Tomo ID"), 1, 2)
+        grid.addWidget(self.tomoid_spin, 1, 3)
+        self.randphi_check = QCheckBox("Randomize phi")
+        self.randphi_check.setChecked(True)
+        grid.addWidget(self.randphi_check, 2, 0, 1, 4)
+        grid.setColumnStretch(1, 1)
+        grid.setColumnStretch(3, 1)
         layout.addWidget(box)
 
     def _build_actions(self, layout):
@@ -183,16 +190,16 @@ class GeometryPickerPanel:
         box = QGroupBox("Utilities (combine / shift)")
         box.setCheckable(True)
         box.setChecked(False)
-        form = QFormLayout(box)
-        form.setLabelAlignment(Qt.AlignRight)
+        grid = QGridLayout(box)
 
-        # Combine
+        # Combine: paired input/output line edits on one row.
+        grid.addWidget(QLabel("<b>Combine</b>"), 0, 0, 1, 4)
         self.comb_in = QLineEdit()
-        self.comb_in.setPlaceholderText("glob, e.g. /data/*_sphere.em")
-        form.addRow("Combine in", self.comb_in)
+        self.comb_in.setPlaceholderText("input glob, e.g. /data/*_sphere.em")
         self.comb_out = QLineEdit()
         self.comb_out.setPlaceholderText("output .em")
-        form.addRow("Combine out", self.comb_out)
+        grid.addWidget(self.comb_in, 1, 0, 1, 2)
+        grid.addWidget(self.comb_out, 1, 2, 1, 2)
         crow = QHBoxLayout()
         self.comb_renum = QCheckBox("Renumber")
         b_comb = QPushButton("Combine")
@@ -200,27 +207,30 @@ class GeometryPickerPanel:
         crow.addWidget(self.comb_renum)
         crow.addStretch(1)
         crow.addWidget(b_comb)
-        form.addRow("", crow)
+        grid.addLayout(crow, 2, 0, 1, 4)
 
-        # Shift
+        # Shift: paired input/output, then offset and rescale rows.
+        grid.addWidget(QLabel("<b>Shift / rescale</b>"), 3, 0, 1, 4)
         self.shift_in = QLineEdit()
         self.shift_in.setPlaceholderText("input .em")
-        form.addRow("Shift in", self.shift_in)
         self.shift_out = QLineEdit()
         self.shift_out.setPlaceholderText("output .em")
-        form.addRow("Shift out", self.shift_out)
+        grid.addWidget(self.shift_in, 4, 0, 1, 2)
+        grid.addWidget(self.shift_out, 4, 2, 1, 2)
         self.sx = self._dspin(-1e6, 1e6, 2, 0.0)
         self.sy = self._dspin(-1e6, 1e6, 2, 0.0)
         self.sz = self._dspin(-1e6, 1e6, 2, 0.0)
         off = QHBoxLayout()
+        off.addWidget(QLabel("Offset"))
         for lab, w in (("X", self.sx), ("Y", self.sy), ("Z", self.sz)):
             off.addWidget(QLabel(lab))
             off.addWidget(w)
         off.addStretch(1)
-        form.addRow("Offset", off)
+        grid.addLayout(off, 5, 0, 1, 4)
         self.apin = self._dspin(1e-6, 1e6, 3, 1.0)
         self.apout = self._dspin(1e-6, 1e6, 3, 1.0)
         ap = QHBoxLayout()
+        ap.addWidget(QLabel("Rescale"))
         ap.addWidget(QLabel("in"))
         ap.addWidget(self.apin)
         ap.addWidget(QLabel("out"))
@@ -229,7 +239,9 @@ class GeometryPickerPanel:
         b_shift = QPushButton("Shift")
         b_shift.clicked.connect(self._shift)
         ap.addWidget(b_shift)
-        form.addRow("Rescale", ap)
+        grid.addLayout(ap, 6, 0, 1, 4)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(2, 1)
         layout.addWidget(box)
 
     @staticmethod
