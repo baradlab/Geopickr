@@ -9,7 +9,23 @@ of pushing the command line and graphics out of view.
 from chimerax.core.tools import ToolInstance
 
 from Qt.QtCore import Qt
-from Qt.QtWidgets import QVBoxLayout, QTabWidget, QScrollArea
+from Qt.QtWidgets import (
+    QVBoxLayout, QHBoxLayout, QTabWidget, QScrollArea, QPushButton,
+)
+
+
+def _compact(layout, spacing=2, margin=4):
+    """Recursively tighten spacing/margins so the tool fits smaller screens."""
+    layout.setSpacing(spacing)
+    layout.setContentsMargins(margin, margin, margin, margin)
+    for i in range(layout.count()):
+        item = layout.itemAt(i)
+        child = item.layout()
+        w = item.widget()
+        if child is not None:
+            _compact(child, spacing, margin)
+        elif w is not None and w.layout() is not None:
+            _compact(w.layout(), spacing, margin)
 
 
 class GeopickrTool(ToolInstance):
@@ -26,6 +42,7 @@ class GeopickrTool(ToolInstance):
         self.tool_window = tw = MainToolWindow(self)
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
         tw.ui_area.setLayout(layout)
 
         self.tabs = QTabWidget()
@@ -45,7 +62,21 @@ class GeopickrTool(ToolInstance):
         self._add_tab(self.picker_panel, "Geometry Picker")
         self._add_tab(self.place_object_panel, "Place Object")
 
-        tw.manage(placement="side")
+        # Tighten spacing on every panel so the (tall) tool fits more screens.
+        for p in self._panels:
+            _compact(p.widget.layout())
+
+        # Help button (many users never find the right-click context menu).
+        brow = QHBoxLayout()
+        brow.setContentsMargins(4, 2, 4, 4)
+        brow.addStretch(1)
+        help_btn = QPushButton("Help")
+        help_btn.clicked.connect(self.display_help)
+        brow.addWidget(help_btn)
+        layout.addLayout(brow)
+
+        # Float by default so the tall tabbed panel has room for vertical space.
+        tw.manage(placement=None)
 
     def _add_tab(self, panel, label):
         scroll = QScrollArea()

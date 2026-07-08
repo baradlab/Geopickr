@@ -73,8 +73,16 @@ def pickparticle(session, markers=None, style="sphere", radius=20.0,
     """
     from . import picking
     from .objmodel import PlacedParticles
+    from chimerax.core.errors import UserError
 
     marker_models = list(markers) if markers else []
+    if style.lower() == "surface":
+        if onSurface is None:
+            raise UserError("No surface was specified (use onSurface #model).")
+    elif not marker_models:
+        raise UserError("No markers were specified (give a marker-set model, "
+                        "e.g. after 'open markers.cmm').")
+
     motl = picking.pick(
         session, style=style, marker_models=marker_models,
         surface_model=onSurface, radius=radius, tangential=tangential,
