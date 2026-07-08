@@ -6,7 +6,7 @@
 
 <sub>*Temporary splash image — placeholder, to be replaced.*</sub>
 
-**Source / issues:** https://github.com/baradlab/Geopickr
+**Source / issues:** https://github.com/baradlab/Geopickr &nbsp;·&nbsp; **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 
 Geopickr brings the subtomogram-averaging *picking* pipeline into one tabbed
 ChimeraX tool. It is a **fork and port** of three UCSF Chimera plugins written
