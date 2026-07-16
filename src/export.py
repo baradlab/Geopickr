@@ -42,13 +42,15 @@ def scene_to_ijk(volume, pos_scene):
 
 def export_model(session, model, path, fmt, volume=None, tomo_id=1,
                  tomo_name=None, vll_path=None, voxel_size=None, dims=None,
-                 motl=None):
+                 motl=None, apply_display_offset=True):
     """Write ``model`` (a PlacedParticles) to ``path`` in ``fmt``.
 
     Coordinates are taken from the motl (ChimeraX scene units) and converted
     using ``volume`` when given, else treated as already in voxels.  Pass
     ``motl`` to export a subset (e.g. only displayed particles); defaults to the
-    model's full motl.  Returns the number of particles written.
+    model's full motl.  When ``apply_display_offset`` is True, the model's Place
+    Object Z/phi offset is folded into the exported coordinates.  Returns the
+    number of particles written.
     """
     from chimerax.core.errors import UserError
     if fmt not in FORMATS:
@@ -56,6 +58,11 @@ def export_model(session, model, path, fmt, volume=None, tomo_id=1,
 
     if motl is None:
         motl = model.motl
+    if apply_display_offset:
+        zo = getattr(model, "z_offset", 0.0)
+        po = getattr(model, "phi_offset", 0.0)
+        if zo or po:
+            motl = ml.bake_offsets(motl, z_offset=zo, phi_offset=po)
     n = motl.shape[1]
     if tomo_name is None:
         tomo_name = os.path.splitext(os.path.basename(path))[0]
@@ -122,6 +129,7 @@ def run_export_dialog(tool, model, motl=None):
     from Qt.QtWidgets import (
         QDialog, QFormLayout, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox,
         QHBoxLayout, QPushButton, QWidget, QDialogButtonBox, QFileDialog, QLabel,
+        QCheckBox,
     )
     session = tool.session
     parent = tool.tool_window.ui_area
@@ -179,6 +187,16 @@ def run_export_dialog(tool, model, motl=None):
             vll_edit.setText(p)
     vll_btn.clicked.connect(browse_vll)
 
+    # Bake the Place Object display Z/phi offset into the exported coordinates.
+    zo = getattr(model, "z_offset", 0.0)
+    po = getattr(model, "phi_offset", 0.0)
+    offset_check = QCheckBox("Bake Place Object Z/phi offset into coordinates")
+    offset_check.setChecked(True)
+    offset_check.setEnabled(bool(zo or po))
+    lbl = ("Z offset %g, phi %g" % (zo, po)) if (zo or po) else "none set"
+    form.addRow("Display offset", QLabel(lbl))
+    form.addRow("", offset_check)
+
     bb = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
     form.addRow(bb)
     bb.accepted.connect(dlg.accept)
@@ -193,6 +211,7 @@ def run_export_dialog(tool, model, motl=None):
     tomo_id = tomo_id_spin.value()
     tomo_name = name_edit.text().strip() or None
     vll_path = vll_edit.text().strip() or None
+    apply_offset = offset_check.isChecked()
 
     ext = FORMATS[fmt][1]
     default = (os.path.splitext(model.source_path)[0] if model.source_path
@@ -204,7 +223,8 @@ def run_export_dialog(tool, model, motl=None):
     try:
         count = export_model(session, model, path, fmt, volume=volume,
                              tomo_id=tomo_id, tomo_name=tomo_name,
-                             vll_path=vll_path, voxel_size=voxel_size, motl=motl)
+                             vll_path=vll_path, voxel_size=voxel_size, motl=motl,
+                             apply_display_offset=apply_offset)
     except Exception as e:
         session.logger.warning("Geopickr export: %s" % e)
         return ("error", str(e))

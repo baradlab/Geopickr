@@ -7,7 +7,17 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- **Pick with an offset** — the Geometry Picker has an **Offset (voxels)** field
+  that moves particles along their own +Z axis (surface normal for
+  sphere/tube/surface, axis tangent for filament) as they are picked, baked into
+  the coordinates. **Show fit** previews the result for sphere/tube as a cyan
+  "particle shell" at radius +offset (outside the yellow fit for positive,
+  inside for negative). Also exposed as `pickparticle ... offset <voxels>`.
+- **Bake the Place Object Z/phi offset into exports** — the Export dialog and
+  `geopickr export` gain an "apply display offset" option (default on), so a
+  Z/phi offset dialed in for viewing can be folded into the exported
+  coordinates. Lets you tweak the offset after picking without re-picking.
 
 ## [1.1.0b2] — 2026-07-08
 

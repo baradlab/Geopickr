@@ -32,11 +32,20 @@ def _cart2sph(x, y, z):
     return np.arctan2(y, x), np.arctan2(z, hxy), np.hypot(hxy, z)
 
 
-def _finalize(coords, random_phi, tomo_id):
-    """Common tail applied to every sampler's raw (20,N) coordinate list."""
+def _finalize(coords, random_phi, tomo_id, offset=0.0):
+    """Common tail applied to every sampler's raw (20,N) coordinate list.
+
+    ``offset`` moves each particle along its own +Z axis (the surface normal for
+    sphere/tube/surface, the axis tangent for filament) by that many voxels, so
+    the offset is baked into the coordinates.  Positive = along +Z (outward).
+    """
     if coords.shape[1] == 0:
         return coords
     m = coords
+    if offset:
+        # +Z of each particle in global coords is column 2 of its rotation.
+        zdir = ml.rotation_matrices_zxz(m[16:19, :])[:, :, 2].T   # (3, N)
+        m[7:10, :] = m[7:10, :] + float(offset) * zdir
     # split absolute position into integer voxel (rows 8-10) + shift (rows 11-13)
     m[10:13, :] = m[7:10, :] - np.round(m[7:10, :])
     m[7:10, :] = np.round(m[7:10, :])
@@ -54,7 +63,7 @@ def _finalize(coords, random_phi, tomo_id):
 # Sphere
 # ---------------------------------------------------------------------------
 def sample_sphere(centers, radii, t_spacing, random_phi=True, tomo_id=0,
-                  set_ids=None):
+                  set_ids=None, offset=0.0):
     """Sample particles on one or more spheres.
 
     ``centers`` is (K,3); ``radii`` a scalar or length-K; spacing in voxels.
@@ -91,7 +100,7 @@ def sample_sphere(centers, radii, t_spacing, random_phi=True, tomo_id=0,
                 col[18] = theta
                 cols.append(col)
     coords = (np.array(cols).T if cols else np.zeros((20, 0)))
-    return _finalize(coords, random_phi, tomo_id)
+    return _finalize(coords, random_phi, tomo_id, offset=offset)
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +131,7 @@ def _resample_arclength(pos, tan, spacing):
 # Tube (particles on the tube surface at radius r)
 # ---------------------------------------------------------------------------
 def sample_tube(axis_list, radius, t_spacing, a_spacing=0.0,
-                random_phi=False, tomo_id=0, set_ids=None):
+                random_phi=False, tomo_id=0, set_ids=None, offset=0.0):
     """Sample particles on the surface of one or more tubes.
 
     ``axis_list`` is a list of (M,3) point arrays (>=2 per tube).
@@ -170,14 +179,14 @@ def sample_tube(axis_list, radius, t_spacing, a_spacing=0.0,
                 col[18] = theta
                 cols.append(col)
     coords = (np.array(cols).T if cols else np.zeros((20, 0)))
-    return _finalize(coords, random_phi, tomo_id)
+    return _finalize(coords, random_phi, tomo_id, offset=offset)
 
 
 # ---------------------------------------------------------------------------
 # Filament (particles on the spline centerline, Z along the tangent)
 # ---------------------------------------------------------------------------
 def sample_filament(axis_list, a_spacing, twist_deg=0.0, random_phi=False,
-                    tomo_id=0, set_ids=None):
+                    tomo_id=0, set_ids=None, offset=0.0):
     """Sample particles along the centerline of one or more filaments."""
     a = float(a_spacing)
     cols = []
@@ -199,7 +208,7 @@ def sample_filament(axis_list, a_spacing, twist_deg=0.0, random_phi=False,
             col[18] = theta
             cols.append(col)
     coords = (np.array(cols).T if cols else np.zeros((20, 0)))
-    return _finalize(coords, random_phi, tomo_id)
+    return _finalize(coords, random_phi, tomo_id, offset=offset)
 
 
 # ---------------------------------------------------------------------------
@@ -210,7 +219,7 @@ MAX_SURFACE_PARTICLES = 200000
 
 
 def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
-                   random_phi=True, tomo_id=0, oversample=5):
+                   random_phi=True, tomo_id=0, oversample=5, offset=0.0):
     """Sample particles roughly ``t_spacing`` apart over a triangle mesh.
 
     Orientations align the object +Z with the (interpolated) surface normal.
@@ -265,7 +274,7 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
         col[18] = theta
         cols.append(col)
     coords = (np.array(cols).T if cols else np.zeros((20, 0)))
-    return _finalize(coords, random_phi, tomo_id)
+    return _finalize(coords, random_phi, tomo_id, offset=offset)
 
 
 def _poisson_thin(pts, min_dist, target=None):
@@ -299,7 +308,7 @@ def _markerset_coords(ms):
 
 def pick(session, *, style, marker_models=None, surface_model=None,
          radius=20.0, tangential=0.0, axial=0.0, twist=0.0,
-         random_phi=None, tomo_id=0):
+         random_phi=None, tomo_id=0, offset=0.0):
     """High-level dispatch returning a (20,N) motive list (uniform radius)."""
     style = style.lower()
     marker_models = marker_models or []
@@ -313,19 +322,19 @@ def pick(session, *, style, marker_models=None, surface_model=None,
         rp = True if random_phi is None else random_phi
         return sample_sphere(np.array(centers), radius, tangential,
                              random_phi=rp, tomo_id=tomo_id,
-                             set_ids=np.array(set_ids))
+                             set_ids=np.array(set_ids), offset=offset)
 
     if style == "tube":
         axis_list = [_markerset_coords(ms) for ms in marker_models]
         rp = False if random_phi is None else random_phi
         return sample_tube(axis_list, radius, tangential, axial,
-                           random_phi=rp, tomo_id=tomo_id)
+                           random_phi=rp, tomo_id=tomo_id, offset=offset)
 
     if style == "filament":
         axis_list = [_markerset_coords(ms) for ms in marker_models]
         rp = False if random_phi is None else random_phi
         return sample_filament(axis_list, axial or tangential, twist_deg=twist,
-                              random_phi=rp, tomo_id=tomo_id)
+                              random_phi=rp, tomo_id=tomo_id, offset=offset)
 
     if style == "surface":
         if surface_model is None:
@@ -336,7 +345,7 @@ def pick(session, *, style, marker_models=None, surface_model=None,
         nrm = getattr(surface_model, "normals", None)
         rp = True if random_phi is None else random_phi
         return sample_surface(v, tri, nrm, tangential, random_phi=rp,
-                             tomo_id=tomo_id)
+                             tomo_id=tomo_id, offset=offset)
 
     from chimerax.core.errors import UserError
     raise UserError("Unknown picking style: %s" % style)

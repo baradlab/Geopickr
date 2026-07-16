@@ -164,6 +164,24 @@ def placement_array(motl, voxel_size=1.0, z_offset=0.0, phi_offset=0.0):
     return np.ascontiguousarray(pa)
 
 
+def bake_offsets(motl, z_offset=0.0, phi_offset=0.0):
+    """Return a copy of ``motl`` with a display Z/phi offset folded into it.
+
+    ``z_offset`` moves each particle along its own +Z axis (voxels); ``phi_offset``
+    is added to the in-plane phi angle.  Mirrors the Place Object display
+    transform so an exported list can match what is shown.
+    """
+    m = np.array(motl, dtype=np.float64, copy=True)
+    if phi_offset:
+        m[16, :] = m[16, :] + phi_offset
+    if z_offset:
+        zdir = rotation_matrices_zxz(m[ROWS_ANGLES, :])[:, :, 2].T   # (3, N)
+        abspos = m[ROWS_COORD, :] + m[ROWS_SHIFT, :] + z_offset * zdir
+        m[ROWS_SHIFT, :] = abspos - np.round(abspos)
+        m[ROWS_COORD, :] = np.round(abspos)
+    return m
+
+
 # ---------------------------------------------------------------------------
 # Single 3x3 rotation matrices (ported from the original qtools.py), used by
 # the geometric picking code.

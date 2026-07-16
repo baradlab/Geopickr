@@ -64,7 +64,7 @@ _placeobject_desc = CmdDesc(
 # ---------------------------------------------------------------------------
 def pickparticle(session, markers=None, style="sphere", radius=20.0,
                  tangential=0.0, axial=0.0, twist=0.0, randomPhi=None,
-                 tomoId=0, onSurface=None, display=True):
+                 tomoId=0, onSurface=None, offset=0.0, display=True):
     """Geometrically pick particles from markers (or a surface).
 
     For sphere/tube/filament styles, ``markers`` is a list of marker-set models
@@ -86,7 +86,8 @@ def pickparticle(session, markers=None, style="sphere", radius=20.0,
     motl = picking.pick(
         session, style=style, marker_models=marker_models,
         surface_model=onSurface, radius=radius, tangential=tangential,
-        axial=axial, twist=twist, random_phi=randomPhi, tomo_id=tomoId)
+        axial=axial, twist=twist, random_phi=randomPhi, tomo_id=tomoId,
+        offset=offset)
     if motl.shape[1] == 0:
         session.logger.warning("Pick Particle: no particles generated.")
         return None
@@ -117,6 +118,7 @@ _pickparticle_desc = CmdDesc(
         ("randomPhi", BoolArg),
         ("tomoId", IntArg),
         ("onSurface", ModelArg),
+        ("offset", FloatArg),
         ("display", BoolArg),
     ],
     synopsis="Geometrically pick particles from markers",
@@ -127,7 +129,8 @@ _pickparticle_desc = CmdDesc(
 # geopickr export
 # ---------------------------------------------------------------------------
 def geopickr_export(session, model, file, format="dynamoTbl", onTomogram=None,
-                    tomoId=1, tomoName=None, vll=None, voxelSize=None):
+                    tomoId=1, tomoName=None, vll=None, voxelSize=None,
+                    applyOffset=True):
     """Export a placed-particle model to em / stopgap / Dynamo / RELION files."""
     from chimerax.core.errors import UserError
     from .objmodel import PlacedParticles
@@ -141,7 +144,8 @@ def geopickr_export(session, model, file, format="dynamoTbl", onTomogram=None,
 
     count = export.export_model(
         session, model, file, fmt, volume=onTomogram, tomo_id=tomoId,
-        tomo_name=tomoName, vll_path=vll, voxel_size=voxelSize)
+        tomo_name=tomoName, vll_path=vll, voxel_size=voxelSize,
+        apply_display_offset=applyOffset)
     import os
     session.logger.info("Geopickr export: %d particles -> %s (%s)"
                         % (count, os.path.basename(file), format))
@@ -157,6 +161,7 @@ _geopickr_export_desc = CmdDesc(
         ("tomoName", StringArg),
         ("vll", OpenFileNameArg),
         ("voxelSize", FloatArg),
+        ("applyOffset", BoolArg),
     ],
     required_arguments=["file"],
     synopsis="Export a Geopickr particle model to Dynamo/RELION/EM formats",

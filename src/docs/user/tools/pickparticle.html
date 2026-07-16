@@ -55,6 +55,13 @@ the mesh normal.</li>
 <li><b>Tangential</b> &ndash; spacing across the surface (sphere/tube/surface).</li>
 <li><b>Axial</b> &ndash; spacing along the axis (tube/filament).</li>
 <li><b>Twist</b> &ndash; helical angle per step (filament).</li>
+<li><b>Offset</b> &ndash; move each picked particle along its own +Z axis (the
+surface normal for sphere/tube/surface; the axis tangent for filament) by this
+many voxels, <i>baked into the coordinates</i>. Positive = outward. For
+sphere/tube, <b>Show fit</b> draws a cyan "particle shell" at radius +offset
+showing exactly where particles will land (outside the yellow fit for a positive
+offset, inside for negative). To adjust an offset later without re-picking, use
+the Place Object <b>Z offset</b> and bake it in at export time.</li>
 <li><b>Randomize phi</b> &ndash; randomize the in-plane angle (recommended for
 spheres/surfaces where it is undefined).</li>
 <li><b>Tomogram ID</b> &ndash; stamped into the motive list for downstream
@@ -86,6 +93,7 @@ between pixel sizes.</li>
 [<b>radius</b> <i>r</i>] [<b>tangential</b> <i>t</i>] [<b>axial</b> <i>a</i>]
 [<b>twist</b> <i>deg</i>] [<b>randomPhi</b> true|false]
 [<b>tomoId</b> <i>n</i>] [<b>onSurface</b> <i>surface-model</i>]
+[<b>offset</b> <i>voxels</i>]
 </p>
 <blockquote><code>open spheres.cmm<br>
 pickparticle #2 style sphere radius 50 tangential 10</code></blockquote>
@@ -118,7 +126,12 @@ import and report issues with an example file.</i></p>
 <b>geopickr export</b> <i>model</i> <b>file</b> <i>path</i>
 [<b>format</b> em|stopgap|dynamoTbl|relion5|relion3]
 [<b>onTomogram</b> <i>volume</i>] [<b>tomoId</b> <i>n</i>] [<b>tomoName</b> <i>name</i>]
-[<b>vll</b> <i>path</i>]
+[<b>vll</b> <i>path</i>] [<b>applyOffset</b> true|false]
+</p>
+<p>
+<b>applyOffset</b> (default true) folds the model's Place Object <b>Z/phi
+offset</b> into the exported coordinates, so what you preview is what you export.
+The dialog exposes the same option as a checkbox.
 </p>
 <blockquote><code>geopickr export #3 file particles.tbl format dynamoTbl onTomogram #1 vll tomograms.vll</code></blockquote>
 

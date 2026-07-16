@@ -164,13 +164,23 @@ class GeometryPickerPanel:
         self.twist_spin = self._dspin(-360.0, 360.0, 2, 0.0)
         grid.addWidget(QLabel("Twist °/step"), 1, 0)
         grid.addWidget(self.twist_spin, 1, 1)
+        # Offset moves particles along their +Z (normal) into the coordinates.
+        self.offset_spin = self._dspin(-100000.0, 100000.0, 2, 0.0)
+        self.offset_spin.valueChanged.connect(self._offset_changed)
+        self.offset_spin.setToolTip(
+            "Move picked particles along their +Z axis (the surface normal for\n"
+            "sphere/tube/surface; the axis tangent for filament). Positive =\n"
+            "outward. Baked into the coordinates. The cyan shell in 'Show fit'\n"
+            "previews where sphere/tube particles will land.")
+        grid.addWidget(QLabel("Offset"), 1, 2)
+        grid.addWidget(self.offset_spin, 1, 3)
         self.tomoid_spin = QSpinBox()
         self.tomoid_spin.setRange(0, 1000000)
-        grid.addWidget(QLabel("Tomo ID"), 1, 2)
-        grid.addWidget(self.tomoid_spin, 1, 3)
+        grid.addWidget(QLabel("Tomo ID"), 2, 0)
+        grid.addWidget(self.tomoid_spin, 2, 1)
         self.randphi_check = QCheckBox("Randomize phi")
         self.randphi_check.setChecked(True)
-        grid.addWidget(self.randphi_check, 2, 0, 1, 4)
+        grid.addWidget(self.randphi_check, 2, 2, 1, 2)
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(3, 1)
         layout.addWidget(box)
@@ -359,9 +369,10 @@ class GeometryPickerPanel:
 
     def _clear_fit(self):
         for obj in self._fit_objects:
-            m = obj.get("model")
-            if m is not None and not m.deleted:
-                self.session.models.close([m])
+            for key in ("model", "offset_model"):
+                m = obj.get(key)
+                if m is not None and not m.deleted:
+                    self.session.models.close([m])
             w = obj.get("widget")
             if w is not None:
                 w.setParent(None)
@@ -439,12 +450,19 @@ class GeometryPickerPanel:
             if obj.get("slider") is None:
                 self._redraw_object(obj)
 
+    def _offset_changed(self, _value=None):
+        # Update the cyan "particle shell" on every shown fit object.
+        for obj in self._fit_objects:
+            self._redraw_object(obj)
+
+    def _shell_geometry(self, obj, r):
+        if obj["kind"] == "sphere":
+            return _sphere_geometry(obj["center"], r)
+        return _tube_geometry(obj["axis"], r)
+
     def _redraw_object(self, obj, _value=None):
         r = self._object_radius(obj)
-        if obj["kind"] == "sphere":
-            va, na, ta = _sphere_geometry(obj["center"], r)
-        else:
-            va, na, ta = _tube_geometry(obj["axis"], r)
+        va, na, ta = self._shell_geometry(obj, r)
         m = obj.get("model")
         if m is None or m.deleted:
             m = Surface("fit %s" % obj["label"], self.session)
@@ -454,11 +472,29 @@ class GeometryPickerPanel:
             obj["model"] = m
         m.set_geometry(va, na, ta)
 
+        # Cyan shell at r + offset shows where particles will actually land.
+        off = self.offset_spin.value()
+        shell = obj.get("offset_model")
+        if not off:
+            if shell is not None and not shell.deleted:
+                self.session.models.close([shell])
+            obj["offset_model"] = None
+            return
+        va, na, ta = self._shell_geometry(obj, max(0.5, r + off))
+        if shell is None or shell.deleted:
+            shell = Surface("offset %s" % obj["label"], self.session)
+            shell.display_style = shell.Mesh
+            shell.color = (0, 200, 255, 170)
+            self.session.models.add([shell])
+            obj["offset_model"] = shell
+        shell.set_geometry(va, na, ta)
+
     def _gather_motl(self):
         s = self._style().lower()
         rp = self.randphi_check.isChecked()
         tan = self.tan_spin.value()
         tomo = self.tomoid_spin.value()
+        off = self.offset_spin.value()
         if s == "surface":
             surf = self._current_surface()
             if surf is None:
@@ -466,7 +502,7 @@ class GeometryPickerPanel:
                 return None
             return picking.pick(self.session, style="surface",
                                 surface_model=surf, tangential=tan,
-                                random_phi=rp, tomo_id=tomo)
+                                random_phi=rp, tomo_id=tomo, offset=off)
 
         models = self._selected_marker_models()
         if not models:
@@ -480,19 +516,19 @@ class GeometryPickerPanel:
             radii = np.array([self._object_radius(o) for o in fit])
             set_ids = np.array([o["set_id"] for o in fit])
             return picking.sample_sphere(centers, radii, tan, random_phi=rp,
-                                         tomo_id=tomo, set_ids=set_ids)
+                                         tomo_id=tomo, set_ids=set_ids, offset=off)
         if s == "tube" and fit:
             axis_list = [o["axis"] for o in fit]
             radii = [self._object_radius(o) for o in fit]
             return picking.sample_tube(axis_list, radii, tan,
                                        self.ax_spin.value(), random_phi=rp,
-                                       tomo_id=tomo)
+                                       tomo_id=tomo, offset=off)
 
         return picking.pick(
             self.session, style=s, marker_models=models,
             radius=self.radius_slider.value(), tangential=tan,
             axial=self.ax_spin.value(), twist=self.twist_spin.value(),
-            random_phi=rp, tomo_id=tomo)
+            random_phi=rp, tomo_id=tomo, offset=off)
 
     def _pick(self):
         try:

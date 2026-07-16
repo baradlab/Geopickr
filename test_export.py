@@ -6,6 +6,7 @@ ArtiaX bundle (the authoritative reference) when available.
 import numpy as np
 from chimerax.geopickr import motivelist as ml
 from chimerax.geopickr import export as ex
+from chimerax.geopickr import picking as pk
 
 session = session  # provided by ChimeraX script runner
 np.random.seed(0)
@@ -105,5 +106,29 @@ last = [l for l in open("/tmp/gc5.star").read().splitlines()
 cx, cy, cz = float(last[3]), float(last[4]), float(last[5])
 assert np.allclose([cx, cy, cz], [(5-50)*10, (6-50)*10, (7-50)*10]), (cx, cy, cz)  # center=size/2
 print("OK Volume coord conversion (Dynamo 1-indexed, RELION5 centered Å @ size/2)")
+
+# ---- pick-time offset (baked along +Z) -------------------------------------
+c0 = np.array([[0.0, 0.0, 0.0]])
+m_no = pk.sample_sphere(c0, 50.0, 10.0, random_phi=False)
+m_off = pk.sample_sphere(c0, 50.0, 10.0, random_phi=False, offset=10.0)
+r_no = np.linalg.norm(m_no[7:10] + m_no[10:13], axis=0)
+r_off = np.linalg.norm(m_off[7:10] + m_off[10:13], axis=0)
+assert np.allclose(r_no, 50.0, atol=1.0), r_no.mean()
+assert np.allclose(r_off, 60.0, atol=1.0), r_off.mean()      # +Z = outward
+m_neg = pk.sample_sphere(c0, 50.0, 10.0, random_phi=False, offset=-10.0)
+r_neg = np.linalg.norm(m_neg[7:10] + m_neg[10:13], axis=0)
+assert np.allclose(r_neg, 40.0, atol=1.0), r_neg.mean()      # negative = inward
+print("OK pick-time offset moves particles along +Z (%.0f -> %.0f / %.0f)"
+      % (r_no.mean(), r_off.mean(), r_neg.mean()))
+
+# ---- bake_offsets (display offset -> coordinates) --------------------------
+mm = np.zeros((20, 1))
+mm[7:10, 0] = [100, 200, 300]
+mm[17, 0], mm[18, 0] = ml.normal_to_zxz([0, 0, 1.0])         # +Z along world +Z
+baked = ml.bake_offsets(mm, z_offset=7.0)
+pos = baked[7:10, 0] + baked[10:13, 0]
+assert np.allclose(pos, [100, 200, 307], atol=1e-6), pos     # moved +7 along Z
+assert np.allclose(ml.bake_offsets(mm, phi_offset=30)[16, 0], 30.0)
+print("OK bake_offsets folds Z/phi display offset into coordinates")
 
 print("ALL EXPORT TESTS PASSED")
