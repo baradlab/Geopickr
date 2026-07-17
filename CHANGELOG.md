@@ -7,6 +7,10 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.1.0b3] — 2026-07-16
+
 ### Added
 - **Pick with an offset** — the Geometry Picker has an **Offset (voxels)** field
   that moves particles along their own +Z axis (surface normal for
@@ -95,7 +99,8 @@ laboratory**, integrated and extended for ChimeraX.
 - Commands: `placeobject` and `pickparticle`.
 - Native ChimeraX session save/restore. GPL v3.
 
-[Unreleased]: https://github.com/baradlab/Geopickr/compare/v1.1.0b2...HEAD
+[Unreleased]: https://github.com/baradlab/Geopickr/compare/v1.1.0b3...HEAD
+[1.1.0b3]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b3
 [1.1.0b2]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b2
 [1.1.0b1]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b1
 [1.0.0]: https://github.com/baradlab/Geopickr/releases/tag/v1.0.0
