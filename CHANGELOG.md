@@ -19,6 +19,13 @@ e.g. `1.1.0b2`).
   Z/phi offset dialed in for viewing can be folded into the exported
   coordinates. Lets you tweak the offset after picking without re-picking.
 
+### Fixed
+- **STOPGAP `.star` compatibility** — the exported loop header now uses bare
+  column tags (dropped the RELION-style `#1`, `#2`, … suffixes, which STOPGAP's
+  reader does not expect) and includes a blank line between the header and the
+  data rows. Matches STOPGAP's own `stopgap_star_write.m`; the missing blank line
+  would otherwise cause STOPGAP's reader to drop the first particle.
+
 ## [1.1.0b2] — 2026-07-08
 
 Incorporates the ChimeraX RBVI Toolshed review feedback and UI-density work. Beta.

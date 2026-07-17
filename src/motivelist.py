@@ -333,10 +333,20 @@ def write_stopgap_star(path, motl):
     }
     int_cols = {"_motl_idx", "_tomo_num", "_object", "_subtomo_num",
                 "_halfset", "_class"}
+    # Match STOPGAP's own stopgap_star_write.m output exactly, because
+    # stopgap_star_read.m is stricter than the RELION dialect we used before:
+    #  1. Column tags are written bare ("_motl_idx"), NOT with a RELION-style
+    #     "#N" column-index suffix. In the STAR standard "#" begins a comment,
+    #     and STOPGAP's reader does not expect the "#N" form.
+    #  2. A blank line separates the loop_ header from the data rows. STOPGAP's
+    #     reader selects data lines with `index > header_length + 1` (header_length
+    #     = line of the last tag), so without this blank line the FIRST particle
+    #     would be silently dropped.
     with open(path, "w") as f:
-        f.write("data_stopgap_motivelist\n\nloop_\n")
-        for i, name in enumerate(_STOPGAP_COLUMNS, start=1):
-            f.write("%s #%d\n" % (name, i))
+        f.write("\ndata_stopgap_motivelist\n\nloop_\n")
+        for name in _STOPGAP_COLUMNS:
+            f.write("%s\n" % name)
+        f.write("\n")
         for j in range(n):
             row = ["%d" % int(cols[name][j]) if name in int_cols
                    else "%.6f" % float(cols[name][j])

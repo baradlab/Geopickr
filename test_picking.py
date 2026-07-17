@@ -93,11 +93,14 @@ sh = ml.shift_motls(mf, shift=(5, 0, 0), apix_in=1.0, apix_out=1.0)
 assert sh.shape == mf.shape
 ml.write_stopgap_star("/tmp/test_pp.star", mf)
 with open("/tmp/test_pp.star") as f:
-    txt = f.read()
-assert "data_stopgap_motivelist" in txt and "_phi" in txt
-body = [l for l in txt.splitlines() if l and not l.startswith("_")
-        and not l.startswith("data_") and l != "loop_"]
-assert len(body) == nf, (len(body), nf)
-print("OK combine/shift/star")
+    lines = f.read().splitlines()
+# STOPGAP-compatible format: bare tags (no "#N"), blank line before data.
+tag_lines = [l for l in lines if l.startswith("_")]
+assert tag_lines and all("#" not in l for l in tag_lines), tag_lines
+last_tag = max(i for i, l in enumerate(lines) if l.startswith("_"))
+assert lines[last_tag + 1].strip() == "", "need a blank line after the tags"
+body = [l for l in lines if l and not l.startswith(("_", "data_")) and l != "loop_"]
+assert len(body) == nf, (len(body), nf)   # no particle dropped
+print("OK combine/shift/star (STOPGAP tags bare + blank line before data)")
 
 print("ALL PICKING TESTS PASSED")
