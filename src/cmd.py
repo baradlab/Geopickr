@@ -64,7 +64,7 @@ _placeobject_desc = CmdDesc(
 # ---------------------------------------------------------------------------
 def pickparticle(session, markers=None, style="sphere", radius=20.0,
                  tangential=0.0, axial=0.0, twist=0.0, randomPhi=None,
-                 tomoId=0, onSurface=None, offset=0.0, display=True):
+                 tomoId=0, onSurface=None, offset=0.0, jitter=0.0, display=True):
     """Geometrically pick particles from markers (or a surface).
 
     For sphere/tube/filament styles, ``markers`` is a list of marker-set models
@@ -87,7 +87,7 @@ def pickparticle(session, markers=None, style="sphere", radius=20.0,
         session, style=style, marker_models=marker_models,
         surface_model=onSurface, radius=radius, tangential=tangential,
         axial=axial, twist=twist, random_phi=randomPhi, tomo_id=tomoId,
-        offset=offset)
+        offset=offset, jitter=jitter)
     if motl.shape[1] == 0:
         session.logger.warning("Pick Particle: no particles generated.")
         return None
@@ -119,6 +119,7 @@ _pickparticle_desc = CmdDesc(
         ("tomoId", IntArg),
         ("onSurface", ModelArg),
         ("offset", FloatArg),
+        ("jitter", FloatArg),
         ("display", BoolArg),
     ],
     synopsis="Geometrically pick particles from markers",

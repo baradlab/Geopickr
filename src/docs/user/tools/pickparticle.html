@@ -46,8 +46,10 @@ at the given radius, oriented along the surface normal.</li>
 with Z along the local tangent; an optional <b>Twist</b> adds a helical in-plane
 rotation per step.</li>
 <li><b>Surface</b> &ndash; particles are distributed over any open surface mesh
-(OBJ/PLY/STL opened in ChimeraX) with approximately even spacing, oriented along
-the mesh normal.</li>
+(OBJ/PLY/STL opened in ChimeraX), oriented along the mesh normal. A restricted
+Lloyd relaxation (centroidal Voronoi tessellation) spreads them into an even,
+near-hexagonal density rather than a random one; an optional <b>Jitter</b> can
+break up that regularity.</li>
 </ul>
 
 <h3>Sampling</h3>
@@ -62,6 +64,9 @@ sphere/tube, <b>Show fit</b> draws a cyan "particle shell" at radius +offset
 showing exactly where particles will land (outside the yellow fit for a positive
 offset, inside for negative). To adjust an offset later without re-picking, use
 the Place Object <b>Z offset</b> and bake it in at export time.</li>
+<li><b>Jitter</b> (surface only) &ndash; after the even (CVT) layout is computed,
+randomly perturb each particle within this radius (voxels) in the surface plane.
+Use it to break up the regular near-hexagonal lattice; 0 keeps the even layout.</li>
 <li><b>Randomize phi</b> &ndash; randomize the in-plane angle (recommended for
 spheres/surfaces where it is undefined).</li>
 <li><b>Tomogram ID</b> &ndash; stamped into the motive list for downstream
@@ -93,7 +98,7 @@ between pixel sizes.</li>
 [<b>radius</b> <i>r</i>] [<b>tangential</b> <i>t</i>] [<b>axial</b> <i>a</i>]
 [<b>twist</b> <i>deg</i>] [<b>randomPhi</b> true|false]
 [<b>tomoId</b> <i>n</i>] [<b>onSurface</b> <i>surface-model</i>]
-[<b>offset</b> <i>voxels</i>]
+[<b>offset</b> <i>voxels</i>] [<b>jitter</b> <i>voxels</i>]
 </p>
 <blockquote><code>open spheres.cmm<br>
 pickparticle #2 style sphere radius 50 tangential 10</code></blockquote>

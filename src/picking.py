@@ -7,7 +7,7 @@ positions and orientations on:
   * sphere   - port of the original Pick Particle ``Sampling_sphere``
   * tube     - port of ``Sampling_tube`` (particles on the tube surface)
   * filament - NEW: particles on the spline centerline, Z along the tangent
-  * surface  - NEW: area-weighted, Poisson-thinned sampling of a mesh
+  * surface  - NEW: restricted-Lloyd / CVT sampling of a mesh (even density)
 
 The sphere/tube ports reproduce the maths of K. Qu's Chimera plugin; filament
 and surface are new derivations sharing the same normal->Euler convention
@@ -212,17 +212,173 @@ def sample_filament(axis_list, a_spacing, twist_deg=0.0, random_phi=False,
 
 
 # ---------------------------------------------------------------------------
-# Surface (area-weighted, Poisson-disk thinned mesh sampling)
+# Surface (restricted-Lloyd / CVT mesh sampling)
 # ---------------------------------------------------------------------------
 # Safety cap so an over-fine spacing on a huge surface can't allocate/blow up.
 MAX_SURFACE_PARTICLES = 200000
+# Cap on the dense point cloud used as the surface proxy for the CVT, so a very
+# fine spacing on a big mesh can't blow up memory / KD-tree time.
+_SURFACE_CAND_CAP = 400000
+# Restricted-Lloyd relaxation iterations (a few dozen is plenty to reach a
+# near-hexagonal centroidal Voronoi tessellation on the discrete surface).
+_LLOYD_ITERS = 50
+# The CVT uses a straight-line (chord) metric, so on curved regions it leaves a
+# small tail of pairs closer than the ideal spacing.  A short min-distance
+# repulsion pass afterwards pushes those apart (reprojecting onto the surface)
+# without disturbing the even layout.  The floor is a fraction of the tangential
+# spacing (the ideal near-hexagonal nearest-neighbor distance is ~1.07x it).
+_REPEL_ITERS = 15
+_MIN_DIST_FRAC = 0.75
+
+
+def _area_weighted_cloud(v0, v1, v2, face_n, probs, n, normals, tri, fidx_rng):
+    """Draw ``n`` area-weighted points (with unit normals) over the mesh."""
+    fidx = fidx_rng.choice(len(probs), size=n, p=probs)
+    r1 = np.sqrt(fidx_rng.uniform(0, 1, n))
+    r2 = fidx_rng.uniform(0, 1, n)
+    a = 1.0 - r1
+    b = r1 * (1.0 - r2)
+    c = r1 * r2
+    pts = a[:, None] * v0[fidx] + b[:, None] * v1[fidx] + c[:, None] * v2[fidx]
+    if normals is not None:
+        nn = np.asarray(normals, dtype=np.float64)
+        nrm = (a[:, None] * nn[tri[fidx, 0]] + b[:, None] * nn[tri[fidx, 1]]
+               + c[:, None] * nn[tri[fidx, 2]])
+    else:
+        nrm = face_n[fidx].astype(np.float64)
+    nlen = np.linalg.norm(nrm, axis=1, keepdims=True)
+    nlen[nlen == 0] = 1.0
+    return pts, nrm / nlen
+
+
+def _restricted_lloyd(cloud, cloud_tree, target, iters, rng):
+    """Restricted-Lloyd / CVT relaxation over a dense surface point cloud.
+
+    The cloud approximates the surface and its area measure.  Starting from
+    ``target`` random seeds, each iteration (a) assigns every cloud point to its
+    nearest seed (a Voronoi cell) and (b) moves each seed to its cell's centroid.
+    The seeds relax into an even, near-hexagonal (blue-noise) layout.  Seeds
+    float slightly off a curved surface as they average, so at the end each is
+    projected back onto the surface (nearest cloud point).  Returns the indices
+    (into ``cloud``) of the final, de-duplicated seeds.
+    """
+    from scipy.spatial import cKDTree
+    n = len(cloud)
+    if target >= n:
+        return np.arange(n)
+    seeds = cloud[rng.choice(n, size=target, replace=False)].copy()
+    for _ in range(iters):
+        _, labels = cKDTree(seeds).query(cloud)
+        counts = np.bincount(labels, minlength=target)
+        centroids = np.zeros((target, 3))
+        np.add.at(centroids, labels, cloud)
+        nonempty = counts > 0
+        centroids[nonempty] /= counts[nonempty, None]
+        centroids[~nonempty] = seeds[~nonempty]     # keep empty cells put
+        seeds = centroids
+    # Project the relaxed seeds back onto the discrete surface, keeping them
+    # distinct (two seeds occasionally snap to the same cloud point).
+    _, snapped = cloud_tree.query(seeds)
+    return _dedup_indices(snapped, cloud, cloud_tree, rng)
+
+
+def _repel_on_surface(idx, cloud, cloud_tree, min_dist, iters, rng):
+    """Push apart seed pairs closer than ``min_dist``, staying on the surface.
+
+    The CVT's chord metric leaves a few pairs closer than the ideal spacing on
+    curved regions.  Each iteration displaces both members of every too-close
+    pair symmetrically along their separation, then reprojects onto the surface
+    (nearest cloud point).  Converges in a few iterations; returns updated,
+    de-duplicated cloud indices.
+    """
+    from scipy.spatial import cKDTree
+    idx = np.asarray(idx, dtype=np.int64)
+    seeds = cloud[idx].copy()
+    for _ in range(iters):
+        pairs = np.asarray(list(cKDTree(seeds).query_pairs(min_dist)),
+                           dtype=np.int64)
+        if len(pairs) == 0:
+            break
+        d = seeds[pairs[:, 1]] - seeds[pairs[:, 0]]
+        length = np.linalg.norm(d, axis=1, keepdims=True)
+        length[length == 0] = 1.0
+        push = (min_dist - length) * 0.5 * d / length
+        disp = np.zeros_like(seeds)
+        np.add.at(disp, pairs[:, 0], -push)
+        np.add.at(disp, pairs[:, 1], push)
+        _, idx = cloud_tree.query(seeds + disp)     # reproject to the surface
+        seeds = cloud[idx]
+    return _dedup_indices(idx, cloud, cloud_tree, rng)
+
+
+def _dedup_indices(idx, cloud, cloud_tree, rng):
+    """Make ``idx`` distinct, resolving collisions to nearby unused cloud points."""
+    n = len(cloud)
+    used = set()
+    out = np.array(idx, dtype=np.int64)
+    for k in range(len(out)):
+        j = int(out[k])
+        if j not in used:
+            used.add(j)
+            continue
+        # Try progressively larger neighborhoods for an unused cloud point.
+        placed = False
+        for kk in (8, 32, 128):
+            cand = np.atleast_1d(cloud_tree.query(cloud[j], k=kk)[1])
+            for c in cand:
+                c = int(c)
+                if c not in used:
+                    used.add(c)
+                    out[k] = c
+                    placed = True
+                    break
+            if placed:
+                break
+        if not placed:
+            r = int(rng.integers(0, n))
+            while r in used:
+                r = int(rng.integers(0, n))
+            used.add(r)
+            out[k] = r
+    return out
+
+
+def _jitter_tangent(pts, nrm, jitter, rng):
+    """Perturb each point by a random vector in its tangent plane.
+
+    ``jitter`` is the maximum displacement (same units as the mesh, i.e. voxels).
+    Points stay (locally) on the surface because the displacement is orthogonal
+    to the normal; the normal/orientation is left unchanged.
+    """
+    n = len(pts)
+    if n == 0 or jitter <= 0:
+        return pts
+    # A stable tangent basis per point: cross the normal with whichever global
+    # axis it is least aligned to, then complete the frame.
+    ref = np.tile(np.array([0.0, 0.0, 1.0]), (n, 1))
+    flip = np.abs(nrm[:, 2]) > 0.9
+    ref[flip] = np.array([1.0, 0.0, 0.0])
+    u = np.cross(nrm, ref)
+    u /= np.linalg.norm(u, axis=1, keepdims=True)
+    w = np.cross(nrm, u)
+    rad = jitter * np.sqrt(rng.uniform(0, 1, n))       # uniform over the disk
+    ang = rng.uniform(0, 2 * np.pi, n)
+    return pts + (rad * np.cos(ang))[:, None] * u + (rad * np.sin(ang))[:, None] * w
 
 
 def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
-                   random_phi=True, tomo_id=0, oversample=5, offset=0.0):
+                   random_phi=True, tomo_id=0, oversample=30, offset=0.0,
+                   jitter=0.0, seed=None):
     """Sample particles roughly ``t_spacing`` apart over a triangle mesh.
 
-    Orientations align the object +Z with the (interpolated) surface normal.
+    Draws a dense area-weighted point cloud as a surface proxy, then runs a
+    restricted Lloyd / centroidal-Voronoi relaxation to spread ``area / t^2``
+    seeds into an even, near-hexagonal density, followed by a short min-distance
+    repulsion pass that clears the close-pair tail the chord-metric CVT leaves on
+    curved regions.  Orientations align the object +Z with the (interpolated)
+    surface normal.  An optional ``jitter`` (voxels) applies a small random
+    tangential perturbation afterwards, so users who want to break up the regular
+    lattice can.
     """
     v = np.asarray(vertices, dtype=np.float64)
     tri = np.asarray(triangles, dtype=np.int64)
@@ -239,33 +395,26 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
 
     target = max(1, int(round(total_area / (t * t))))
     target = min(target, MAX_SURFACE_PARTICLES)
-    n_cand = min(max(target * int(oversample), target + 1),
-                 MAX_SURFACE_PARTICLES * int(oversample))
+    # Dense cloud approximating the surface; more points -> smoother centroids.
+    n_cloud = min(max(target * int(oversample), target + 1), _SURFACE_CAND_CAP)
 
+    rng = np.random.default_rng(seed)
     probs = face_area / total_area
-    rng = np.random
-    fidx = rng.choice(len(tri), size=n_cand, p=probs)
-    r1 = np.sqrt(rng.uniform(0, 1, n_cand))
-    r2 = rng.uniform(0, 1, n_cand)
-    a = 1.0 - r1
-    b = r1 * (1.0 - r2)
-    c = r1 * r2
-    pts = (a[:, None] * v0[fidx] + b[:, None] * v1[fidx] + c[:, None] * v2[fidx])
+    cloud, cloud_nrm = _area_weighted_cloud(v0, v1, v2, face_n, probs,
+                                            n_cloud, normals, tri, rng)
 
-    if normals is not None:
-        n = np.asarray(normals, dtype=np.float64)
-        nrm = (a[:, None] * n[tri[fidx, 0]] + b[:, None] * n[tri[fidx, 1]]
-               + c[:, None] * n[tri[fidx, 2]])
-    else:
-        nrm = face_n[fidx]
-    nlen = np.linalg.norm(nrm, axis=1, keepdims=True)
-    nlen[nlen == 0] = 1.0
-    nrm = nrm / nlen
-
-    keep = _poisson_thin(pts, t, target)
+    from scipy.spatial import cKDTree
+    cloud_tree = cKDTree(cloud)
+    keep = _restricted_lloyd(cloud, cloud_tree, target, _LLOYD_ITERS, rng)
+    keep = _repel_on_surface(keep, cloud, cloud_tree, _MIN_DIST_FRAC * t,
+                             _REPEL_ITERS, rng)
+    pts = cloud[keep]
+    nrm = cloud_nrm[keep]
+    if jitter > 0:
+        pts = _jitter_tangent(pts, nrm, float(jitter), rng)
 
     cols = []
-    for i in keep:
+    for i in range(len(pts)):
         psi, theta = ml.normal_to_zxz(nrm[i])
         col = np.zeros(20)
         col[5] = 1
@@ -277,28 +426,6 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
     return _finalize(coords, random_phi, tomo_id, offset=offset)
 
 
-def _poisson_thin(pts, min_dist, target=None):
-    """Greedy Poisson-disk thinning; return indices kept (>= min_dist apart).
-
-    Builds one KD-tree over all candidates and, in random order, accepts a
-    point then blocks every candidate within ``min_dist`` of it.  This is
-    roughly O(N log N) rather than rebuilding a tree per point.
-    """
-    from scipy.spatial import cKDTree
-    n = len(pts)
-    if n == 0:
-        return []
-    tree = cKDTree(pts)
-    alive = np.ones(n, dtype=bool)
-    kept = []
-    for i in np.random.permutation(n):
-        if not alive[i]:
-            continue
-        kept.append(i)
-        alive[tree.query_ball_point(pts[i], min_dist)] = False
-    return kept
-
-
 # ---------------------------------------------------------------------------
 # Orchestrator used by the command and GUI
 # ---------------------------------------------------------------------------
@@ -308,7 +435,7 @@ def _markerset_coords(ms):
 
 def pick(session, *, style, marker_models=None, surface_model=None,
          radius=20.0, tangential=0.0, axial=0.0, twist=0.0,
-         random_phi=None, tomo_id=0, offset=0.0):
+         random_phi=None, tomo_id=0, offset=0.0, jitter=0.0):
     """High-level dispatch returning a (20,N) motive list (uniform radius)."""
     style = style.lower()
     marker_models = marker_models or []
@@ -345,7 +472,7 @@ def pick(session, *, style, marker_models=None, surface_model=None,
         nrm = getattr(surface_model, "normals", None)
         rp = True if random_phi is None else random_phi
         return sample_surface(v, tri, nrm, tangential, random_phi=rp,
-                             tomo_id=tomo_id, offset=offset)
+                             tomo_id=tomo_id, offset=offset, jitter=jitter)
 
     from chimerax.core.errors import UserError
     raise UserError("Unknown picking style: %s" % style)

@@ -7,7 +7,20 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+- **Even surface picking** — surface sampling now uses a restricted Lloyd
+  relaxation (centroidal Voronoi tessellation) over the mesh instead of
+  area-weighted random + greedy Poisson thinning. Particles land in an even,
+  near-hexagonal density (much lower spread of nearest-neighbor distances) at the
+  requested `area / tangential²` count. A short min-distance repulsion pass
+  afterwards clears the close-pair tail the chord-metric CVT would otherwise
+  leave on curved regions.
+
+### Added
+- **Jitter** (surface style) — an optional **Jitter (voxels)** field that
+  randomly perturbs each surface particle in the surface plane after the even
+  layout is computed, so users who want to break up the regular lattice can.
+  Also exposed as `pickparticle ... jitter <voxels>`.
 
 ## [1.1.0b3] — 2026-07-16
 

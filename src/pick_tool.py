@@ -178,9 +178,18 @@ class GeometryPickerPanel:
         self.tomoid_spin.setRange(0, 1000000)
         grid.addWidget(QLabel("Tomo ID"), 2, 0)
         grid.addWidget(self.tomoid_spin, 2, 1)
+        # Jitter randomly perturbs surface picks in-plane to break the regular
+        # CVT lattice (surface style only).
+        self.jitter_spin = self._dspin(0.0, 100000.0, 2, 0.0)
+        self.jitter_spin.setToolTip(
+            "Surface only: after the even (CVT) layout, randomly perturb each\n"
+            "particle within this radius (voxels) in the surface plane, to break\n"
+            "up the regular lattice. 0 = keep the even layout.")
+        grid.addWidget(QLabel("Jitter"), 2, 2)
+        grid.addWidget(self.jitter_spin, 2, 3)
         self.randphi_check = QCheckBox("Randomize phi")
         self.randphi_check.setChecked(True)
-        grid.addWidget(self.randphi_check, 2, 2, 1, 2)
+        grid.addWidget(self.randphi_check, 3, 0, 1, 4)
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(3, 1)
         layout.addWidget(box)
@@ -336,6 +345,7 @@ class GeometryPickerPanel:
         self.tan_spin.setEnabled(s in ("Sphere", "Tube", "Surface"))
         self.ax_spin.setEnabled(s in ("Tube", "Filament"))
         self.twist_spin.setEnabled(s == "Filament")
+        self.jitter_spin.setEnabled(s == "Surface")
         self.surface_combo.setEnabled(s == "Surface")
         self.marker_list.setEnabled(s != "Surface")
 
@@ -502,7 +512,8 @@ class GeometryPickerPanel:
                 return None
             return picking.pick(self.session, style="surface",
                                 surface_model=surf, tangential=tan,
-                                random_phi=rp, tomo_id=tomo, offset=off)
+                                random_phi=rp, tomo_id=tomo, offset=off,
+                                jitter=self.jitter_spin.value())
 
         models = self._selected_marker_models()
         if not models:
