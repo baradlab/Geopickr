@@ -318,7 +318,10 @@ def write_stopgap_star(path, motl):
     idx = np.arange(1, n + 1)
     obj = m[5, :].copy()
     obj[obj == 0] = 1
-    halfset = (idx % 2 == 0).astype(int) + 1     # alternate 1/2
+    # STOPGAP's halfset field is a *string* ('A'/'B'), used to split gold-standard
+    # halves. Match its own convention (all 'A', even indices -> 'B'); numeric
+    # 1/2 is read as the strings "1"/"2" and never matches 'A'/'B'.
+    halfset = np.where(idx % 2 == 0, "B", "A")
     cols = {
         "_motl_idx": idx,
         "_tomo_num": m[4, :].astype(int),
@@ -331,8 +334,8 @@ def write_stopgap_star(path, motl):
         "_phi": m[16, :], "_psi": m[17, :], "_the": m[18, :],
         "_class": m[ROW_CLASS, :].astype(int),
     }
-    int_cols = {"_motl_idx", "_tomo_num", "_object", "_subtomo_num",
-                "_halfset", "_class"}
+    int_cols = {"_motl_idx", "_tomo_num", "_object", "_subtomo_num", "_class"}
+    str_cols = {"_halfset"}
     # Match STOPGAP's own stopgap_star_write.m output exactly, because
     # stopgap_star_read.m is stricter than the RELION dialect we used before:
     #  1. Column tags are written bare ("_motl_idx"), NOT with a RELION-style
@@ -348,9 +351,14 @@ def write_stopgap_star(path, motl):
             f.write("%s\n" % name)
         f.write("\n")
         for j in range(n):
-            row = ["%d" % int(cols[name][j]) if name in int_cols
-                   else "%.6f" % float(cols[name][j])
-                   for name in _STOPGAP_COLUMNS]
+            row = []
+            for name in _STOPGAP_COLUMNS:
+                if name in str_cols:
+                    row.append(str(cols[name][j]))
+                elif name in int_cols:
+                    row.append("%d" % int(cols[name][j]))
+                else:
+                    row.append("%.6f" % float(cols[name][j]))
             f.write("\t".join(row) + "\n")
 
 

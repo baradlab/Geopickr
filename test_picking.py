@@ -148,6 +148,11 @@ last_tag = max(i for i, l in enumerate(lines) if l.startswith("_"))
 assert lines[last_tag + 1].strip() == "", "need a blank line after the tags"
 body = [l for l in lines if l and not l.startswith(("_", "data_")) and l != "loop_"]
 assert len(body) == nf, (len(body), nf)   # no particle dropped
-print("OK combine/shift/star (STOPGAP tags bare + blank line before data)")
+# halfset is STOPGAP's string field: values must be 'A'/'B', not 1/2, and both
+# halves must appear so a gold-standard split is possible.
+hs_col = list(ml._STOPGAP_COLUMNS).index("_halfset")
+halves = {row.split("\t")[hs_col] for row in body}
+assert halves == {"A", "B"}, halves
+print("OK combine/shift/star (STOPGAP tags bare, blank line, halfset A/B)")
 
 print("ALL PICKING TESTS PASSED")

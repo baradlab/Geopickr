@@ -7,6 +7,13 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
+### Fixed
+- **STOPGAP `.star` halfset labels** — the `_halfset` column is now written as the
+  string `A`/`B` (alternating) instead of numeric `1`/`2`. STOPGAP's motivelist
+  defines `halfset` as a string field valued `A`/`B` (see
+  `sg_motl_assign_halfsets.m`); the numeric labels were read as the strings
+  `"1"`/`"2"` and never matched, breaking the gold-standard half-set split.
+
 ### Changed
 - **Even surface picking** — surface sampling now uses a restricted Lloyd
   relaxation (centroidal Voronoi tessellation) over the mesh instead of
