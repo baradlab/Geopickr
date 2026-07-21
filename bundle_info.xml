@@ -9,7 +9,7 @@ Particle -> Place Object) into a single ChimeraX bundle:
   * Place Object    - display TOM/AV3 ".em" motive lists as placed objects
 -->
 <BundleInfo name="ChimeraX-Geopickr"
-            version="1.1.0b3"
+            version="1.1.0b4"
             package="chimerax.geopickr"
             minSessionVersion="1" maxSessionVersion="1"
             customInit="false"

@@ -7,33 +7,37 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
-### Fixed
-- **STOPGAP `.star` halfset labels** — the `_halfset` column is now written as the
-  string `A`/`B` (alternating) instead of numeric `1`/`2`. STOPGAP's motivelist
-  defines `halfset` as a string field valued `A`/`B` (see
-  `sg_motl_assign_halfsets.m`); the numeric labels were read as the strings
-  `"1"`/`"2"` and never matched, breaking the gold-standard half-set split.
+_Nothing yet._
 
-### Changed
-- **Even surface picking** — surface sampling now uses a restricted Lloyd
-  relaxation (centroidal Voronoi tessellation) over the mesh instead of
-  area-weighted random + greedy Poisson thinning. Particles land in an even,
-  near-hexagonal density (much lower spread of nearest-neighbor distances) at the
-  requested `area / tangential²` count. A short min-distance repulsion pass
-  afterwards clears the close-pair tail the chord-metric CVT would otherwise
-  leave on curved regions.
+## [1.1.0b4] — 2026-07-20
+
+Even surface picking, optional jitter, and STOPGAP interoperability fixes. Beta.
 
 ### Added
+- **Even surface picking (CVT)** — surface sampling now spreads particles into an
+  even, near-hexagonal density with a restricted Lloyd / centroidal Voronoi
+  relaxation over the mesh, replacing the old area-weighted random + greedy
+  Poisson thinning. Particles land at the requested `area / tangential²` count
+  with a much lower spread of nearest-neighbor distances; a short min-distance
+  repulsion pass clears the close-pair tail the chord-metric CVT would otherwise
+  leave on curved regions.
+- **Jitter** (surface style) — an optional **Jitter (voxels)** field that
+  randomly perturbs each surface particle in the surface plane after the even
+  layout is computed, so users who want to break up the regular lattice can.
+  Also exposed as `pickparticle ... jitter <voxels>`.
 - **Half-sets split by surface component** — when a surface carries a
   `component_number` array (MorphometricsX / surface_morphometrics VTP meshes),
   each picked particle's STOPGAP `_object` is set to its connected-component
   label, and STOPGAP export assigns whole components to the same gold-standard
   half (balanced A/B across components) instead of alternating particle-by-
   particle. Surfaces without `component_number` keep the alternating split.
-- **Jitter** (surface style) — an optional **Jitter (voxels)** field that
-  randomly perturbs each surface particle in the surface plane after the even
-  layout is computed, so users who want to break up the regular lattice can.
-  Also exposed as `pickparticle ... jitter <voxels>`.
+
+### Fixed
+- **STOPGAP `.star` halfset labels** — the `_halfset` column is now written as the
+  string `A`/`B` instead of numeric `1`/`2`. STOPGAP's motivelist defines
+  `halfset` as a string field valued `A`/`B` (see `sg_motl_assign_halfsets.m`);
+  the numeric labels were read as the strings `"1"`/`"2"` and never matched,
+  breaking the gold-standard half-set split.
 
 ## [1.1.0b3] — 2026-07-16
 
@@ -125,7 +129,8 @@ laboratory**, integrated and extended for ChimeraX.
 - Commands: `placeobject` and `pickparticle`.
 - Native ChimeraX session save/restore. GPL v3.
 
-[Unreleased]: https://github.com/baradlab/Geopickr/compare/v1.1.0b3...HEAD
+[Unreleased]: https://github.com/baradlab/Geopickr/compare/v1.1.0b4...HEAD
+[1.1.0b4]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b4
 [1.1.0b3]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b3
 [1.1.0b2]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b2
 [1.1.0b1]: https://github.com/baradlab/Geopickr/releases/tag/v1.1.0b1
