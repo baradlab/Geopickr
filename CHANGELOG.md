@@ -7,12 +7,7 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
-### Changed
-- **Half-sets split by object for any multi-object pick** — the gold-standard
-  half-set split now keeps whole objects together (balanced A/B across objects)
-  whenever a pick produced **more than one object**: multiple spheres, tubes, or
-  filaments, as well as VTP surface components. Previously only VTP
-  `component_number` surfaces did this. Single-object picks still alternate.
+_Nothing yet._
 
 ## [1.1.0b4] — 2026-07-20
 
@@ -30,12 +25,13 @@ Even surface picking, optional jitter, and STOPGAP interoperability fixes. Beta.
   randomly perturbs each surface particle in the surface plane after the even
   layout is computed, so users who want to break up the regular lattice can.
   Also exposed as `pickparticle ... jitter <voxels>`.
-- **Half-sets split by surface component** — when a surface carries a
-  `component_number` array (MorphometricsX / surface_morphometrics VTP meshes),
-  each picked particle's STOPGAP `_object` is set to its connected-component
-  label, and STOPGAP export assigns whole components to the same gold-standard
-  half (balanced A/B across components) instead of alternating particle-by-
-  particle. Surfaces without `component_number` keep the alternating split.
+- **Half-sets split by object** — each picked particle carries an `_object` id
+  (one per sphere, tube, filament, or surface component; a surface's component
+  comes from a `component_number` array on MorphometricsX / surface_morphometrics
+  VTP meshes). When a pick produces **more than one object**, STOPGAP export keeps
+  whole objects together in the gold-standard halves (balanced A/B across objects)
+  instead of alternating particle-by-particle, so no single object is split
+  across the two halves. Single-object picks alternate as before.
 
 ### Fixed
 - **STOPGAP `.star` halfset labels** — the `_halfset` column is now written as the
