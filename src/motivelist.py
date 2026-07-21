@@ -311,21 +311,58 @@ _STOPGAP_COLUMNS = (
 )
 
 
-def write_stopgap_star(path, motl):
-    """Write a (20, N) TOM/AV3 motive list as a STOPGAP motivelist .star file."""
+def _halfsets_alternating(n):
+    """Per-particle 'A'/'B' by index (STOPGAP's default even-index -> 'B')."""
+    return np.where(np.arange(1, n + 1) % 2 == 0, "B", "A")
+
+
+def _halfsets_by_object(obj):
+    """Assign whole objects/components to 'A'/'B', balancing particle counts.
+
+    Every particle sharing an ``_object`` id lands in the same half-set (so a
+    connected surface component is never split across the gold-standard halves).
+    Objects are greedily assigned largest-first to whichever half currently holds
+    fewer particles.  With a single object this can't split, so we fall back to
+    the alternating scheme.
+    """
+    obj = np.asarray(obj)
+    groups, counts = np.unique(obj, return_counts=True)
+    if groups.size < 2:
+        return _halfsets_alternating(len(obj))
+    order = np.argsort(-counts)                  # largest components first
+    label = {}
+    load = {"A": 0, "B": 0}
+    for gi in order:
+        half = "A" if load["A"] <= load["B"] else "B"
+        label[groups[gi]] = half
+        load[half] += int(counts[gi])
+    return np.array([label[g] for g in obj])
+
+
+def write_stopgap_star(path, motl, halfset_by_object=False):
+    """Write a (20, N) TOM/AV3 motive list as a STOPGAP motivelist .star file.
+
+    ``halfset_by_object`` splits the gold-standard halves by the ``_object``
+    (row 5) grouping instead of alternating particle-by-particle, keeping whole
+    objects/components together (used for VTP ``component_number`` surface picks).
+    """
     m = np.asarray(motl, dtype=np.float64)
     n = m.shape[1]
     idx = np.arange(1, n + 1)
-    obj = m[5, :].copy()
-    obj[obj == 0] = 1
+    # STOPGAP object ids are 1-indexed; remap the _object grouping (which may be
+    # a 0-indexed VTP component_number) to dense 1..K, preserving the grouping.
+    raw_obj = m[5, :].astype(int)
+    remap = {int(u): i + 1 for i, u in enumerate(np.unique(raw_obj))}
+    obj = np.array([remap[int(o)] for o in raw_obj], dtype=int)
     # STOPGAP's halfset field is a *string* ('A'/'B'), used to split gold-standard
-    # halves. Match its own convention (all 'A', even indices -> 'B'); numeric
-    # 1/2 is read as the strings "1"/"2" and never matches 'A'/'B'.
-    halfset = np.where(idx % 2 == 0, "B", "A")
+    # halves. Match its own convention; numeric 1/2 is read as the strings
+    # "1"/"2" and never matches 'A'/'B'.
+    halfset = (_halfsets_by_object(obj) if halfset_by_object
+               else _halfsets_alternating(n))
     cols = {
         "_motl_idx": idx,
         "_tomo_num": m[4, :].astype(int),
-        "_object": obj.astype(int),
+        "_object": obj,
         "_subtomo_num": m[3, :].astype(int),
         "_halfset": halfset,
         "_orig_x": m[7, :], "_orig_y": m[8, :], "_orig_z": m[9, :],

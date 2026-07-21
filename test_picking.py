@@ -132,6 +132,51 @@ assert (nnsp < 0.6 * msp_mean).sum() <= 1, int((nnsp < 0.6 * msp_mean).sum())
 print("OK surface (sphere): %d particles, CoV=%.3f, no close-pair tail"
       % (nsp, nnsp.std() / msp_mean))
 
+# ---- surface component_number -> _object + by-component half-sets ----------
+def _grid_plane(w=120.0, h=40.0, nx=24, ny=8):
+    xs = np.linspace(0, w, nx + 1); ys = np.linspace(0, h, ny + 1)
+    vid = {}; verts = []
+    for j, yy in enumerate(ys):
+        for i, xx in enumerate(xs):
+            vid[(i, j)] = len(verts); verts.append([xx, yy, 0.0])
+    tris = []; comp = []
+    for j in range(ny):
+        for i in range(nx):
+            a = vid[(i, j)]; b = vid[(i + 1, j)]
+            cc = vid[(i + 1, j + 1)]; d = vid[(i, j + 1)]
+            tris += [[a, b, cc], [a, cc, d]]
+            lab = 0 if 0.5 * (xs[i] + xs[i + 1]) < w / 2 else 1   # left=0, right=1
+            comp += [lab, lab]
+    return (np.array(verts), np.array(tris),
+            np.tile([0, 0, 1.0], (len(verts), 1)), np.array(comp))
+
+Vg, Tg, Ng, Cg = _grid_plane()
+mg = pk.sample_surface(Vg, Tg, Ng, t_spacing=6.0, random_phi=False,
+                       component=Cg, seed=0)
+pg = (mg[7:10] + mg[10:13]).T
+og = mg[5].astype(int)
+# each particle's _object is the component of the region it fell in
+assert set(og[pg[:, 0] < 58]) == {0}, set(og[pg[:, 0] < 58])
+assert set(og[pg[:, 0] > 62]) == {1}, set(og[pg[:, 0] > 62])
+# STOPGAP export by component: every object lands wholly in one half, both used
+ml.write_stopgap_star("/tmp/comp.star", mg, halfset_by_object=True)
+crows = [l for l in open("/tmp/comp.star").read().splitlines()
+         if l and not l.startswith(("_", "data_")) and l != "loop_"]
+oc = list(ml._STOPGAP_COLUMNS).index("_object")
+hc = list(ml._STOPGAP_COLUMNS).index("_halfset")
+by_obj = {}
+for l in crows:
+    f = l.split("\t"); by_obj.setdefault(f[oc], set()).add(f[hc])
+assert all(len(h) == 1 for h in by_obj.values()), by_obj   # component not split
+assert set().union(*by_obj.values()) == {"A", "B"}, by_obj  # both halves used
+# without the flag, the same motl alternates instead
+ml.write_stopgap_star("/tmp/comp_alt.star", mg)
+arows = [l for l in open("/tmp/comp_alt.star").read().splitlines()
+         if l and not l.startswith(("_", "data_")) and l != "loop_"]
+alt = [l.split("\t")[hc] for l in arows]
+assert alt[:2] == ["A", "B"], alt[:2]
+print("OK surface components: _object=component, half-sets split by component")
+
 # ---- combine / shift / star -------------------------------------------
 c = ml.combine_motls([mf, mt], renumber=True)
 assert c.shape[1] == nf + nt

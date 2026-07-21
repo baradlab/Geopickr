@@ -24,6 +24,12 @@ e.g. `1.1.0b2`).
   leave on curved regions.
 
 ### Added
+- **Half-sets split by surface component** — when a surface carries a
+  `component_number` array (MorphometricsX / surface_morphometrics VTP meshes),
+  each picked particle's STOPGAP `_object` is set to its connected-component
+  label, and STOPGAP export assigns whole components to the same gold-standard
+  half (balanced A/B across components) instead of alternating particle-by-
+  particle. Surfaces without `component_number` keep the alternating split.
 - **Jitter** (surface style) — an optional **Jitter (voxels)** field that
   randomly perturbs each surface particle in the surface plane after the even
   layout is computed, so users who want to break up the regular lattice can.

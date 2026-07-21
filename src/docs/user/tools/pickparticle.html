@@ -46,10 +46,14 @@ at the given radius, oriented along the surface normal.</li>
 with Z along the local tangent; an optional <b>Twist</b> adds a helical in-plane
 rotation per step.</li>
 <li><b>Surface</b> &ndash; particles are distributed over any open surface mesh
-(OBJ/PLY/STL opened in ChimeraX), oriented along the mesh normal. A restricted
-Lloyd relaxation (centroidal Voronoi tessellation) spreads them into an even,
-near-hexagonal density rather than a random one; an optional <b>Jitter</b> can
-break up that regularity.</li>
+(OBJ/PLY/STL, or a quantified <code>.vtp</code> opened with MorphometricsX),
+oriented along the mesh normal. A restricted Lloyd relaxation (centroidal
+Voronoi tessellation) spreads them into an even, near-hexagonal density rather
+than a random one; an optional <b>Jitter</b> can break up that regularity. If
+the mesh carries a <code>component_number</code> array (MorphometricsX /
+surface_morphometrics), each particle is tagged with its connected-surface
+component (STOPGAP <code>_object</code>), and STOPGAP export splits the
+gold-standard half-sets by component (whole components stay together).</li>
 </ul>
 
 <h3>Sampling</h3>

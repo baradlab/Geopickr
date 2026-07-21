@@ -248,7 +248,7 @@ def _area_weighted_cloud(v0, v1, v2, face_n, probs, n, normals, tri, fidx_rng):
         nrm = face_n[fidx].astype(np.float64)
     nlen = np.linalg.norm(nrm, axis=1, keepdims=True)
     nlen[nlen == 0] = 1.0
-    return pts, nrm / nlen
+    return pts, nrm / nlen, fidx
 
 
 def _restricted_lloyd(cloud, cloud_tree, target, iters, rng):
@@ -368,7 +368,7 @@ def _jitter_tangent(pts, nrm, jitter, rng):
 
 def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
                    random_phi=True, tomo_id=0, oversample=30, offset=0.0,
-                   jitter=0.0, seed=None):
+                   jitter=0.0, component=None, seed=None):
     """Sample particles roughly ``t_spacing`` apart over a triangle mesh.
 
     Draws a dense area-weighted point cloud as a surface proxy, then runs a
@@ -379,6 +379,12 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
     surface normal.  An optional ``jitter`` (voxels) applies a small random
     tangential perturbation afterwards, so users who want to break up the regular
     lattice can.
+
+    ``component`` is an optional per-triangle integer label (length = number of
+    triangles, e.g. a VTP ``component_number``); when given, each particle's
+    ``_object`` field (row 5) is set to the component of the face it was sampled
+    from, so downstream export can keep whole components together (half-set
+    splitting).
     """
     v = np.asarray(vertices, dtype=np.float64)
     tri = np.asarray(triangles, dtype=np.int64)
@@ -400,8 +406,11 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
 
     rng = np.random.default_rng(seed)
     probs = face_area / total_area
-    cloud, cloud_nrm = _area_weighted_cloud(v0, v1, v2, face_n, probs,
-                                            n_cloud, normals, tri, rng)
+    cloud, cloud_nrm, cloud_fidx = _area_weighted_cloud(
+        v0, v1, v2, face_n, probs, n_cloud, normals, tri, rng)
+    cloud_comp = None
+    if component is not None:
+        cloud_comp = np.asarray(component, dtype=np.int64)[cloud_fidx]
 
     from scipy.spatial import cKDTree
     cloud_tree = cKDTree(cloud)
@@ -410,6 +419,7 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
                              _REPEL_ITERS, rng)
     pts = cloud[keep]
     nrm = cloud_nrm[keep]
+    comp = cloud_comp[keep] if cloud_comp is not None else None
     if jitter > 0:
         pts = _jitter_tangent(pts, nrm, float(jitter), rng)
 
@@ -417,7 +427,7 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
     for i in range(len(pts)):
         psi, theta = ml.normal_to_zxz(nrm[i])
         col = np.zeros(20)
-        col[5] = 1
+        col[5] = int(comp[i]) if comp is not None else 1
         col[7], col[8], col[9] = pts[i]
         col[17] = psi
         col[18] = theta
@@ -429,6 +439,33 @@ def sample_surface(vertices, triangles, normals=None, t_spacing=10.0,
 # ---------------------------------------------------------------------------
 # Orchestrator used by the command and GUI
 # ---------------------------------------------------------------------------
+def surface_component_faces(surface_model):
+    """Per-triangle ``component_number`` for a VTP surface, or None.
+
+    MorphometricsX loads quantified ``.vtp`` meshes as a ChimeraX ``Surface``
+    carrying a ``.vtp`` object with ``cell_data`` / ``point_data`` arrays (from
+    surface_morphometrics).  When a ``component_number`` array is present we
+    return it aligned to ``surface_model.triangles`` (VTP cell order), so each
+    picked particle can be tagged with the connected surface component it lands
+    on.  Duck-typed so Geopickr never hard-depends on MorphometricsX.
+    """
+    vtp = getattr(surface_model, "vtp", None)
+    if vtp is None:
+        return None
+    cell = getattr(vtp, "cell_data", None) or {}
+    arr = cell.get("component_number")
+    if arr is not None:                         # per-triangle: direct
+        arr = np.asarray(arr).reshape(-1)
+        return arr.astype(np.int64) if len(arr) else None
+    point = getattr(vtp, "point_data", None) or {}
+    parr = point.get("component_number")
+    if parr is not None:                        # per-vertex: label by 1st vertex
+        parr = np.asarray(parr).reshape(-1)
+        tris = np.asarray(getattr(vtp, "triangles"))
+        return parr.astype(np.int64)[tris[:, 0]]
+    return None
+
+
 def _markerset_coords(ms):
     return np.asarray(ms.atoms.coords, dtype=np.float64)
 
@@ -470,9 +507,11 @@ def pick(session, *, style, marker_models=None, surface_model=None,
         v = surface_model.vertices
         tri = surface_model.triangles
         nrm = getattr(surface_model, "normals", None)
+        comp = surface_component_faces(surface_model)
         rp = True if random_phi is None else random_phi
         return sample_surface(v, tri, nrm, tangential, random_phi=rp,
-                             tomo_id=tomo_id, offset=offset, jitter=jitter)
+                             tomo_id=tomo_id, offset=offset, jitter=jitter,
+                             component=comp)
 
     from chimerax.core.errors import UserError
     raise UserError("Unknown picking style: %s" % style)

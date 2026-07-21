@@ -55,6 +55,10 @@ class PlacedParticles(Surface):
         self.z_offset = 0.0
         self.phi_offset = 0.0
 
+        # STOPGAP export: split gold-standard halves by _object (component)
+        # instead of alternating (set for VTP component_number surface picks).
+        self.halfset_by_component = False
+
         # Color parameters
         self.color_mode = "class"          # "class" | "cc" | "solid"
         self.class_row = ml.ROW_CLASS + 1  # 1-based row used for class color
@@ -204,6 +208,7 @@ class PlacedParticles(Surface):
             "voxel_size": self.voxel_size,
             "z_offset": self.z_offset,
             "phi_offset": self.phi_offset,
+            "halfset_by_component": self.halfset_by_component,
             "color_mode": self.color_mode,
             "class_row": self.class_row,
             "cc_min": self.cc_min,
@@ -225,7 +230,8 @@ class PlacedParticles(Surface):
                 source_path=data.get("source_path", ""),
                 shape_name=data.get("shape_name", "Sphere"),
                 custom_path=data.get("custom_path", ""))
-        for key in ("voxel_size", "z_offset", "phi_offset", "color_mode",
+        for key in ("voxel_size", "z_offset", "phi_offset",
+                    "halfset_by_component", "color_mode",
                     "class_row", "cc_min", "cc_max", "lower_cc_color",
                     "upper_cc_color", "solid_color_rgba", "show_mode",
                     "show_one_index", "show_cc_low", "show_cc_high",
