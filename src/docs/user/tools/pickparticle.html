@@ -52,9 +52,18 @@ Voronoi tessellation) spreads them into an even, near-hexagonal density rather
 than a random one; an optional <b>Jitter</b> can break up that regularity. If
 the mesh carries a <code>component_number</code> array (MorphometricsX /
 surface_morphometrics), each particle is tagged with its connected-surface
-component (STOPGAP <code>_object</code>), and STOPGAP export splits the
-gold-standard half-sets by component (whole components stay together).</li>
+component (STOPGAP <code>_object</code>).</li>
 </ul>
+
+<p>
+Each picked particle is tagged with an <b>object</b> id (STOPGAP
+<code>_object</code>): one per sphere, tube, filament, or surface component. When
+a pick spans <b>more than one object</b>, STOPGAP export splits the gold-standard
+half-sets <i>by object</i> (each whole sphere/tube/filament/component stays in one
+half, balanced A/B across objects) rather than alternating particle-by-particle,
+so no single object is split across the two halves. A single-object pick
+alternates as before.
+</p>
 
 <h3>Sampling</h3>
 <ul>

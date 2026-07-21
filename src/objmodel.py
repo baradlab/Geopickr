@@ -55,9 +55,10 @@ class PlacedParticles(Surface):
         self.z_offset = 0.0
         self.phi_offset = 0.0
 
-        # STOPGAP export: split gold-standard halves by _object (component)
-        # instead of alternating (set for VTP component_number surface picks).
-        self.halfset_by_component = False
+        # STOPGAP export: split gold-standard halves by _object (whole
+        # spheres/tubes/filaments/components) instead of alternating, set when a
+        # pick produced >= 2 objects.
+        self.halfset_by_object = False
 
         # Color parameters
         self.color_mode = "class"          # "class" | "cc" | "solid"
@@ -208,7 +209,7 @@ class PlacedParticles(Surface):
             "voxel_size": self.voxel_size,
             "z_offset": self.z_offset,
             "phi_offset": self.phi_offset,
-            "halfset_by_component": self.halfset_by_component,
+            "halfset_by_object": self.halfset_by_object,
             "color_mode": self.color_mode,
             "class_row": self.class_row,
             "cc_min": self.cc_min,
@@ -231,13 +232,16 @@ class PlacedParticles(Surface):
                 shape_name=data.get("shape_name", "Sphere"),
                 custom_path=data.get("custom_path", ""))
         for key in ("voxel_size", "z_offset", "phi_offset",
-                    "halfset_by_component", "color_mode",
+                    "halfset_by_object", "color_mode",
                     "class_row", "cc_min", "cc_max", "lower_cc_color",
                     "upper_cc_color", "solid_color_rgba", "show_mode",
                     "show_one_index", "show_cc_low", "show_cc_high",
                     "show_class"):
             if key in data:
                 setattr(m, key, data[key])
+        # Legacy key from 1.1.0b4 sessions (renamed halfset_by_component).
+        if "halfset_by_object" not in data and data.get("halfset_by_component"):
+            m.halfset_by_object = True
         ms = data.get("model state")
         if ms is not None:
             Surface.set_state_from_snapshot(m, session, ms)

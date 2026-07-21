@@ -7,7 +7,12 @@ e.g. `1.1.0b2`).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+- **Half-sets split by object for any multi-object pick** — the gold-standard
+  half-set split now keeps whole objects together (balanced A/B across objects)
+  whenever a pick produced **more than one object**: multiple spheres, tubes, or
+  filaments, as well as VTP surface components. Previously only VTP
+  `component_number` surfaces did this. Single-object picks still alternate.
 
 ## [1.1.0b4] — 2026-07-20
 

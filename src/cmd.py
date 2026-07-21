@@ -97,11 +97,9 @@ def pickparticle(session, markers=None, style="sphere", radius=20.0,
         else (onSurface.name if onSurface is not None else "picked"), style)
     model = PlacedParticles(session, name, motl, shape_name="Hexagon")
     model.voxel_size = 0.1
-    # Surface picks from a VTP carrying component_number split gold-standard
-    # halves by component at STOPGAP export.
-    model.halfset_by_component = (
-        onSurface is not None
-        and picking.surface_component_faces(onSurface) is not None)
+    # Multiple objects (spheres/tubes/filaments/surface components) split
+    # gold-standard halves by object at STOPGAP export.
+    model.halfset_by_object = picking.has_multiple_objects(motl)
     model.update_placements()
     if display:
         session.models.add([model])

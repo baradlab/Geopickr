@@ -566,11 +566,9 @@ class GeometryPickerPanel:
         model = PlacedParticles(self.session, self._last_name, motl,
                                 shape_name="Hexagon")
         model.voxel_size = 0.1
-        # Surface picks from a VTP with component_number export gold-standard
-        # halves split by component (see export/STOPGAP).
-        model.halfset_by_component = (
-            style == "Surface" and src is not None
-            and picking.surface_component_faces(src) is not None)
+        # Multiple objects (spheres/tubes/filaments/surface components) export
+        # gold-standard halves split by object (see export/STOPGAP).
+        model.halfset_by_object = picking.has_multiple_objects(motl)
         model.update_placements()
         self.session.models.add([model])
         self._last_model = model

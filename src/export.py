@@ -72,12 +72,12 @@ def export_model(session, model, path, fmt, volume=None, tomo_id=1,
         ml.write_em_motivelist(path, motl)
         return n
     if fmt == "stopgap":
-        # Surface picks from a VTP with component_number split the gold-standard
-        # halves by component (whole components stay together); everything else
-        # alternates.
+        # Picks with >= 2 objects (multiple spheres/tubes/filaments, or VTP
+        # surface components) split the gold-standard halves by object so whole
+        # objects stay together; single-object picks alternate.
         ml.write_stopgap_star(
             path, motl,
-            halfset_by_object=getattr(model, "halfset_by_component", False))
+            halfset_by_object=getattr(model, "halfset_by_object", False))
         return n
 
     # Coordinate conversion for voxel/Angstrom formats.

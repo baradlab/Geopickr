@@ -177,6 +177,24 @@ alt = [l.split("\t")[hc] for l in arows]
 assert alt[:2] == ["A", "B"], alt[:2]
 print("OK surface components: _object=component, half-sets split by component")
 
+# ---- multiple spheres -> half-sets split by sphere --------------------------
+ms3 = pk.sample_sphere(np.array([[0., 0, 0], [300, 0, 0], [0, 300, 0]]), 30.0,
+                       12.0, random_phi=False, tomo_id=0)
+assert pk.has_multiple_objects(ms3)          # 3 spheres -> >= 2 objects
+assert not pk.has_multiple_objects(m)        # single sphere (top of file) -> no
+ml.write_stopgap_star("/tmp/sph3.star", ms3, halfset_by_object=True)
+srows = [l for l in open("/tmp/sph3.star").read().splitlines()
+         if l and not l.startswith(("_", "data_")) and l != "loop_"]
+soc = list(ml._STOPGAP_COLUMNS).index("_object")
+shc = list(ml._STOPGAP_COLUMNS).index("_halfset")
+byo = {}
+for l in srows:
+    f = l.split("\t"); byo.setdefault(f[soc], set()).add(f[shc])
+assert len(byo) == 3, byo                     # one _object per sphere
+assert all(len(h) == 1 for h in byo.values()), byo   # each sphere in one half
+assert set().union(*byo.values()) == {"A", "B"}, byo  # both halves used
+print("OK multiple spheres: half-sets split by sphere (%d objects)" % len(byo))
+
 # ---- combine / shift / star -------------------------------------------
 c = ml.combine_motls([mf, mt], renumber=True)
 assert c.shape[1] == nf + nt

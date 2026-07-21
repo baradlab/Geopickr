@@ -466,6 +466,21 @@ def surface_component_faces(surface_model):
     return None
 
 
+def has_multiple_objects(motl):
+    """True if the motl spans >= 2 distinct ``_object`` (row 5) ids.
+
+    Every sampler tags particles with a per-object id (one per sphere, tube,
+    filament, or surface component).  When a pick produced more than one object,
+    STOPGAP export keeps whole objects together in the gold-standard halves
+    (instead of alternating particle-by-particle), so independent objects are
+    never split across the two halves.
+    """
+    m = np.asarray(motl)
+    if m.ndim != 2 or m.shape[1] == 0:
+        return False
+    return int(np.unique(m[5, :]).size) >= 2
+
+
 def _markerset_coords(ms):
     return np.asarray(ms.atoms.coords, dtype=np.float64)
 
